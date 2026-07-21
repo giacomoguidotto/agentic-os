@@ -15,6 +15,9 @@ releases independently.
 - `skills/public/`: self-contained public release modules, including the
   provider-neutral `/post` and `/tweet` authoring surfaces.
 - `docs/adr/`: architectural decisions owned by Agentic OS.
+- `skills/public/`: the positive public export surface.
+- `skills/internal/`: committed internal skills, excluded from public export.
+- `automations/internal/`: committed internal automation definitions.
 - `scripts/check.sh`: public-safety, ownership, and source-shape validation.
 - `.github/workflows/`: clean-clone validation and independent tag releases.
 
