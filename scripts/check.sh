@@ -93,9 +93,14 @@ while IFS= read -r -d '' path; do
 
   [[ ! -L "$path" ]] || fail "source must be self-contained, symlink found: $path"
 
-  if [[ "$path" != scripts/check.sh ]] \
-    && grep -IEn '/Users/[^/]+/|/home/[^/]+/|[A-Za-z]:\\Users\\' "$path"; then
-    fail 'personal absolute path found'
+  if [[ "$path" != scripts/check.sh ]]; then
+    if grep -IEn '/Users/[^/]+/|/home/[^/]+/|[A-Za-z]:\\Users\\' -- "$path"; then
+      fail "personal absolute path found: $path"
+    else
+      scan_status=$?
+      [[ $scan_status -eq 1 ]] \
+        || fail "personal-path scan failed for $path"
+    fi
   fi
 done < <(git ls-files -co --exclude-standard -z)
 
