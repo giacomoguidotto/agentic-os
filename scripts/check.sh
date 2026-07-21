@@ -48,6 +48,10 @@ required_files=(
   docs/constellation.md
   docs/adr/0001-agentic-os-is-a-source-repository.md
   docs/adr/0002-the-narrowest-domain-owns-a-definition.md
+  skills/public/post/SKILL.md
+  skills/public/post/agents/openai.yaml
+  skills/public/tweet/SKILL.md
+  skills/public/tweet/agents/openai.yaml
   scripts/bump-version.sh
   .github/workflows/check.yml
   .github/workflows/release.yml
@@ -55,6 +59,32 @@ required_files=(
 
 for path in "${required_files[@]}"; do
   [[ -s "$path" ]] || fail "required source is missing or empty: $path"
+done
+
+for skill in post tweet; do
+  skill_file="skills/public/$skill/SKILL.md"
+  metadata_file="skills/public/$skill/agents/openai.yaml"
+
+  grep -Eq "^name: $skill$" "$skill_file" \
+    || fail "public skill name is invalid: $skill"
+  grep -Eq '^description: .+' "$skill_file" \
+    || fail "public skill description is missing: $skill"
+  grep -Fq 'read-only `/lookup`' "$skill_file" \
+    || fail "public skill lacks provider-neutral optional context: $skill"
+  grep -Fq 'Do not create a remote draft' "$skill_file" \
+    || fail "public skill lacks authoring boundary: $skill"
+  grep -Fq 'separate explicit publishing action' "$skill_file" \
+    || fail "public skill lacks explicit publishing separation: $skill"
+  grep -Fq "\$${skill}" "$metadata_file" \
+    || fail "public skill default prompt does not invoke itself: $skill"
+
+  if grep -Eq '^dependencies:' "$metadata_file"; then
+    fail "social authoring skill requires a provider dependency: $skill"
+  fi
+
+  if grep -RFn 'TODO' "skills/public/$skill"; then
+    fail "public skill contains unfinished placeholders: $skill"
+  fi
 done
 
 canonical_terms=(
