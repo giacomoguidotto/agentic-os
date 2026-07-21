@@ -51,6 +51,12 @@ required_files=(
   scripts/bump-version.sh
   .github/workflows/check.yml
   .github/workflows/release.yml
+  skills/public/domain-reconnaissance/SKILL.md
+  skills/internal/setup-project/SKILL.md
+  skills/internal/setup-project/agents/openai.yaml
+  skills/internal/setup-project/resources/repository-setup.md
+  automations/internal/repo-pr-ci-repair-sweep/automation.toml
+  automations/internal/repo-pr-ci-repair-sweep/prompt.md
 )
 
 for path in "${required_files[@]}"; do
@@ -103,6 +109,54 @@ while IFS= read -r -d '' path; do
     fi
   fi
 done < <(git ls-files -co --exclude-standard -z)
+
+declare -A skill_paths=()
+while IFS= read -r -d '' skill_file; do
+  skill_file=${skill_file#./}
+  case "$skill_file" in
+    skills/public/*/SKILL.md|skills/internal/*/SKILL.md) ;;
+    *) fail "skill definition is outside a canonical lane: $skill_file" ;;
+  esac
+
+  skill_name=$(sed -n 's/^name:[[:space:]]*//p' "$skill_file" | head -n 1)
+  [[ -n "$skill_name" ]] || fail "skill name is missing: $skill_file"
+  [[ "$(basename "$(dirname "$skill_file")")" == "$skill_name" ]] \
+    || fail "skill directory and declared name differ: $skill_file"
+  [[ -z "${skill_paths[$skill_name]:-}" ]] \
+    || fail "duplicate skill definition: $skill_name"
+  skill_paths[$skill_name]=$skill_file
+done < <(find . -path ./.git -prune -o -type f -name SKILL.md -print0)
+
+[[ "${skill_paths[domain-reconnaissance]:-}" == \
+  skills/public/domain-reconnaissance/SKILL.md ]] \
+  || fail 'domain-reconnaissance must be defined once in the public lane'
+[[ "${skill_paths[setup-project]:-}" == skills/internal/setup-project/SKILL.md ]] \
+  || fail 'setup-project must be defined once in the internal lane'
+
+declare -A automation_paths=()
+while IFS= read -r -d '' automation_file; do
+  automation_file=${automation_file#./}
+  case "$automation_file" in
+    automations/internal/*/automation.toml) ;;
+    *) fail "automation definition is outside the internal lane: $automation_file" ;;
+  esac
+
+  automation_id=$(sed -n 's/^id[[:space:]]*=[[:space:]]*"\([^"]*\)".*/\1/p' \
+    "$automation_file" | head -n 1)
+  [[ -n "$automation_id" ]] || fail "automation id is missing: $automation_file"
+  [[ -z "${automation_paths[$automation_id]:-}" ]] \
+    || fail "duplicate automation definition: $automation_id"
+  automation_paths[$automation_id]=$automation_file
+done < <(find . -path ./.git -prune -o -type f -name automation.toml -print0)
+
+[[ "${automation_paths[renovate-pr-ci-fixer]:-}" == \
+  automations/internal/repo-pr-ci-repair-sweep/automation.toml ]] \
+  || fail 'PR/CI repair sweep must be defined once in the internal lane'
+
+if find skills/public -mindepth 2 -maxdepth 2 -type f ! -name SKILL.md -print -quit \
+  | grep -q .; then
+  fail 'public skill roots may contain only SKILL.md and self-contained subresources'
+fi
 
 grep -Fq 'bash scripts/check.sh' .github/workflows/check.yml \
   || fail 'clean-clone validation workflow does not run the source validator'

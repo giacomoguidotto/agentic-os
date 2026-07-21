@@ -13,6 +13,9 @@ releases independently.
 - `CONTEXT.md`: canonical constellation vocabulary and ownership rule.
 - `docs/constellation.md`: low-resolution topology and dependency boundaries.
 - `docs/adr/`: architectural decisions owned by Agentic OS.
+- `skills/public/`: the positive public export surface.
+- `skills/internal/`: committed internal skills, excluded from public export.
+- `automations/internal/`: committed internal automation definitions.
 - `scripts/check.sh`: public-safety, ownership, and source-shape validation.
 - `.github/workflows/`: clean-clone validation and independent tag releases.
 
