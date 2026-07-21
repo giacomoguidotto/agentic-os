@@ -1,0 +1,19 @@
+name: Check
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  source:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate public source
+        run: bash scripts/check.sh
+      - name: Validate whitespace
+        run: git diff --check

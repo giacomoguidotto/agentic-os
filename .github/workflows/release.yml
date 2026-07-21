@@ -1,0 +1,28 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: agentic-os-release
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  tag:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Validate public source
+        run: bash scripts/check.sh
+      - name: Derive independent version
+        id: version
+        run: bash scripts/bump-version.sh
+      - name: Push tag
+        if: steps.version.outputs.tag != ''
+        run: git push origin "${{ steps.version.outputs.tag }}"
