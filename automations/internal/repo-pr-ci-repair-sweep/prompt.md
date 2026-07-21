@@ -20,6 +20,7 @@ Run a daily CI repair and merge-conflict sweep across repositories owned by the 
    - `gh search prs --owner <owner> --state open --review-requested @me --json url,repository,title,author,updatedAt -L 200`
    - `gh search prs --owner <owner> --state open --assignee @me --json url,repository,title,author,updatedAt -L 200`
    - `gh search prs --owner <owner> --state open --checks failure --json url,repository,title,author,updatedAt -L 200`
+   - `gh search prs --owner <owner> --state open --json url,repository,title,author,updatedAt -L 200`, so conflict-only PRs enter full mergeability inspection
 
    Mark truncated searches blocked while continuing with complete results.
 4. Fetch full PR metadata, including base and head OIDs, repository ownership, author association, draft state, merge state, and status checks. Use the pull-request API when the CLI omits author association.
