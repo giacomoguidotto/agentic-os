@@ -45,15 +45,34 @@ def source_files(source: Path) -> list[Path]:
     return files
 
 
+def require_safe_directory(path: Path, label: str) -> None:
+    if path.is_symlink():
+        raise ValueError(f"{label} must not be a symlink: {path}")
+    if path.exists() and not path.is_dir():
+        raise ValueError(f"{label} must be a directory: {path}")
+
+
+def require_safe_managed_parent(target_root: Path, path: Path) -> None:
+    relative = path.relative_to(target_root)
+    current = target_root
+    for part in relative.parts:
+        current = current / part
+        if current.exists() or current.is_symlink():
+            require_safe_directory(current, "managed source directory")
+
+
 def compare(automations: list[dict[str, Any]], target_root: Path) -> list[dict[str, Any]]:
+    require_safe_directory(target_root, "target root")
     branches = []
     for automation in automations:
         source = RESOURCE_DIR / automation["source"]
         target = target_root / automation["name"]
+        require_safe_directory(target, "automation source target")
         drift = []
         for path in source_files(source):
             relative = path.relative_to(source)
             installed = target / relative
+            require_safe_managed_parent(target_root, installed.parent)
             if (
                 not installed.is_file()
                 or installed.is_symlink()
@@ -73,14 +92,17 @@ def compare(automations: list[dict[str, Any]], target_root: Path) -> list[dict[s
 
 def reconcile(automations: list[dict[str, Any]], target_root: Path) -> list[str]:
     writes: list[str] = []
+    require_safe_directory(target_root, "target root")
     target_root.mkdir(parents=False, exist_ok=True)
     for automation in automations:
         source = RESOURCE_DIR / automation["source"]
         target = target_root / automation["name"]
+        require_safe_directory(target, "automation source target")
         target.mkdir(exist_ok=True)
         for path in source_files(source):
             relative = path.relative_to(source)
             installed = target / relative
+            require_safe_managed_parent(target_root, installed.parent)
             if installed.exists() and (not installed.is_file() or installed.is_symlink()):
                 raise ValueError(f"unsafe managed target: {installed}")
             if installed.is_file() and digest(path) == digest(installed):

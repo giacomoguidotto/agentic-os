@@ -12,6 +12,7 @@ import subprocess
 import tempfile
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 
 
 SCRIPT_DIR = Path(__file__).resolve().parent
@@ -179,6 +180,37 @@ def repository_identity(remote: str) -> str | None:
     return f"{match.group(1)}/{match.group(2)}"
 
 
+def repository_host(remote: str) -> tuple[str | None, bool]:
+    value = remote.strip()
+    if "://" in value:
+        parsed = urlparse(value)
+        return parsed.hostname, parsed.scheme == "ssh"
+    match = re.match(r"^(?:[^@/:]+@)?([^/:]+):[^/].+$", value)
+    if match:
+        return match.group(1), True
+    return None, False
+
+
+def trusted_github_host(remote: str) -> bool:
+    host, uses_ssh = repository_host(remote)
+    if host == "github.com":
+        return True
+    if not host or not uses_ssh:
+        return False
+    resolved = run(["ssh", "-G", host])
+    if resolved.returncode != 0:
+        return False
+    hostname = next(
+        (
+            line.split(None, 1)[1].strip().lower()
+            for line in resolved.stdout.splitlines()
+            if line.lower().startswith("hostname ")
+        ),
+        None,
+    )
+    return hostname == "github.com"
+
+
 def branch_state(root: Path, remote_head: str, local_head: str) -> str:
     if remote_head == local_head:
         return "current"
@@ -240,17 +272,19 @@ def observe_repository(contract: dict[str, Any], root: Path) -> dict[str, Any]:
     if origin.returncode != 0:
         return result(contract, root, "blocked", "origin-missing")
     actual_identity = repository_identity(origin.stdout)
+    trusted_host = trusted_github_host(origin.stdout)
     checks.append(
         {
             "id": "repository-identity",
             "status": (
                 "converged"
                 if actual_identity == contract["repository"]
+                and trusted_host
                 else "blocked"
             ),
         }
     )
-    if actual_identity != contract["repository"]:
+    if actual_identity != contract["repository"] or not trusted_host:
         return result(
             contract,
             root,
@@ -402,6 +436,7 @@ def execute(mode: str, registry_path: Path) -> dict[str, Any]:
         observe_repository(contract, repositories[contract["registry_key"]])
         for contract in contracts
     ]
+    attempted: dict[str, tuple[bool, str]] = {}
     if mode == "reconcile":
         by_key = {branch["key"]: branch for branch in first_observation}
         for contract in contracts:
@@ -410,6 +445,7 @@ def execute(mode: str, registry_path: Path) -> dict[str, Any]:
                 continue
             root = repositories[contract["registry_key"]]
             changed, reason = clone_missing(contract, root)
+            attempted[contract["registry_key"]] = (changed, reason)
             if changed:
                 writes.append({"branch": contract["registry_key"], "action": reason})
 
@@ -417,6 +453,13 @@ def execute(mode: str, registry_path: Path) -> dict[str, Any]:
         observe_repository(contract, repositories[contract["registry_key"]])
         for contract in contracts
     ]
+    for branch in final_branches:
+        attempt = attempted.get(branch["key"])
+        if not attempt or branch["status"] != "drifted":
+            continue
+        changed, reason = attempt
+        branch["status"] = "failed" if changed else "blocked"
+        branch["reason"] = "post-reconcile-drift" if changed else reason
     return {
         "schema": "agentic-os.setup.result/v1",
         "mode": mode,

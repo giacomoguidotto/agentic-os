@@ -115,6 +115,10 @@ def main() -> None:
         "career-ops",
     ]:
         raise AssertionError("fixed System contract changed")
+    if setup.trusted_github_host(
+        "https://attacker.invalid/giacomoguidotto/knowledge-system.git"
+    ):
+        raise AssertionError("repository identity accepted an untrusted remote host")
 
     with tempfile.TemporaryDirectory() as raw_temporary:
         temporary = Path(raw_temporary)
@@ -168,6 +172,28 @@ def main() -> None:
             or dirty_path.read_text(encoding="utf-8") != "preserve\n"
         ):
             raise AssertionError("unsafe Git state was mutated or not isolated")
+        dirty_path.unlink()
+
+        missing_registry = temporary / "missing-installation.yml"
+        missing_root = temporary / "missing-parent" / "knowledge-system"
+        missing_registry.write_text(
+            "repositories:\n"
+            f"  knowledge-system: {missing_root}\n"
+            f"  mastery-system: {roots['mastery-system']}\n"
+            f"  career-ops: {roots['career-ops']}\n",
+            encoding="utf-8",
+        )
+        failed_clone = setup.execute("reconcile", missing_registry)
+        knowledge_branch = next(
+            branch
+            for branch in failed_clone["branches"]
+            if branch["key"] == "knowledge-system"
+        )
+        if (
+            knowledge_branch["status"] != "blocked"
+            or knowledge_branch["reason"] != "registered-root-parent-missing"
+        ):
+            raise AssertionError("failed clone attempt remained reported as drift")
 
         malformed = temporary / "malformed.yml"
         malformed.write_text(
@@ -205,6 +231,29 @@ def main() -> None:
             or tree_digest(source_lane) != first_digest
         ):
             raise AssertionError("automation source reconciliation is not idempotent")
+
+        outside = temporary / "outside"
+        outside.mkdir()
+        protected = outside / "prompt.md"
+        protected.write_text("preserve\n", encoding="utf-8")
+        unsafe_lane = temporary / "unsafe-automation-sources"
+        unsafe_lane.mkdir()
+        (unsafe_lane / "job-scout").symlink_to(outside, target_is_directory=True)
+        unsafe = subprocess.run(
+            [
+                "python3",
+                str(AUTOMATION_TOOL),
+                "reconcile",
+                "--target-root",
+                str(unsafe_lane),
+            ],
+            check=False,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        if unsafe.returncode == 0 or protected.read_text(encoding="utf-8") != "preserve\n":
+            raise AssertionError("automation reconciliation followed a target symlink")
 
     print("check-setup-agentic-os: ok")
 
