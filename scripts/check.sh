@@ -63,6 +63,19 @@ required_files=(
   skills/public/agentic-os/resources/upskill-result.schema.json
   skills/public/agentic-os/resources/examples/upskill-result.json
   skills/public/agentic-os/resources/examples/upskill-blocked-readiness-result.json
+  skills/public/orchestrate/SKILL.md
+  skills/public/orchestrate/references/IMPLEMENTER.md
+  skills/public/orchestrate/references/REVIEW.md
+  skills/public/orchestrate/references/REVIEWER.md
+  skills/public/orchestrate/references/RUNTIME.md
+  skills/public/orchestrate/agents/openai.yaml
+  skills/public/orchestrate/scripts/liveness-contract.test.mjs
+  skills/public/orchestrate/scripts/render-graph.mjs
+  skills/public/orchestrate/scripts/render-graph.test.mjs
+  skills/public/orchestrate/scripts/upsert-graph.mjs
+  skills/public/orchestrate/scripts/upsert-graph.test.mjs
+  skills/public/orchestrate/scripts/validate-graph.mjs
+  skills/public/orchestrate/scripts/validate-graph.test.mjs
   skills/public/setup-agentic-os/SKILL.md
   skills/public/setup-agentic-os/agents/openai.yaml
   skills/public/setup-agentic-os/resources/system-contracts.json
@@ -107,6 +120,7 @@ python3 scripts/check-agentic-os-pursue.py
 python3 scripts/check-agentic-os-upskill.py
 python3 scripts/check-setup-agentic-os.py
 python3 scripts/check-migration-rehearsal.py
+node --test skills/public/orchestrate/scripts/*.test.mjs
 
 for skill in post tweet; do
   skill_file="skills/public/$skill/SKILL.md"
@@ -202,6 +216,14 @@ done < <(find . -path ./.git -prune -o -type f -name SKILL.md -print0)
 [[ "${skill_paths[domain-reconnaissance]:-}" == \
   skills/public/domain-reconnaissance/SKILL.md ]] \
   || fail 'domain-reconnaissance must be defined once in the public lane'
+[[ "${skill_paths[orchestrate]:-}" == skills/public/orchestrate/SKILL.md ]] \
+  || fail 'orchestrate must be defined once in the public lane'
+grep -Fq 'default_prompt: "Use $orchestrate ' \
+  skills/public/orchestrate/agents/openai.yaml \
+  || fail 'orchestrate default prompt does not invoke itself'
+grep -Fq 'allow_implicit_invocation: false' \
+  skills/public/orchestrate/agents/openai.yaml \
+  || fail 'orchestrate must remain explicit-invocation only'
 [[ "${skill_paths[setup-project]:-}" == skills/internal/setup-project/SKILL.md ]] \
   || fail 'setup-project must be defined once in the internal lane'
 

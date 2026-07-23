@@ -133,6 +133,7 @@ def create_release_fixtures(releases: Path) -> None:
     exports = {
         "giacomoguidotto/agentic-os": (
             "agentic-os",
+            "orchestrate",
             "post",
             "setup-agentic-os",
         ),
@@ -749,6 +750,7 @@ def main() -> None:
                 for source in provenance["sources"]
             )
             or any(token in provenance_text.lower() for token in ("timestamp", "generated_at", "created_at"))
+            or "orchestrate" not in bundled_names
             or "career-operational-private" in bundled_names
             or "third-party-tool" in bundled_names
         ):

@@ -14,7 +14,8 @@ releases independently.
 - `docs/constellation.md`: low-resolution topology and dependency boundaries.
 - `skills/public/`: self-contained public release modules, including
   `/agentic-os scout`, `/agentic-os pursue`, `/agentic-os upskill`, and the
-  provider-neutral `/post` and `/tweet` authoring surfaces.
+  provider-neutral `/post` and `/tweet` authoring surfaces, plus
+  `/orchestrate` for accepted GitHub ticket graphs.
 - `skills/public/setup-agentic-os/`: the roots-only, stateless constellation
   setup composer, its fixed System contracts, canonical automation resources,
   and migration tooling.
