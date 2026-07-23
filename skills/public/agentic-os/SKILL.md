@@ -1,7 +1,7 @@
 ---
 name: agentic-os
-description: Coordinate versioned cross-System capabilities. Use when the user invokes /agentic-os scout or /agentic-os pursue, or asks Agentic OS to evaluate or advance Career opportunities.
-argument-hint: "scout --target <positive integer> | pursue [<opportunity-ref>...]"
+description: Coordinate versioned cross-System capabilities. Use when the user invokes /agentic-os scout, /agentic-os pursue, or /agentic-os upskill.
+argument-hint: "scout --target <positive integer> | pursue [<opportunity-ref>...] | upskill <knowledge-project-ref>..."
 ---
 
 # Agentic OS
@@ -13,14 +13,16 @@ currently supports:
 /agentic-os scout --target <positive integer>
 /agentic-os pursue
 /agentic-os pursue <opportunity-ref>...
+/agentic-os upskill <knowledge-project-ref>...
 ```
 
 For `scout`, reject missing, repeated, non-integer, or non-positive targets. For
 `pursue`, accept no arguments for automatic selection or one or more non-empty
 opaque opportunity references. Reject flags, duplicate references, and every
-other action. Repository roots, System bindings, profile data, throughput
-targets, and native configuration are derived from installed Systems, never
-accepted as public caller inputs.
+other argument shape. For `upskill`, require one or more non-empty opaque
+Knowledge project references and reject flags or duplicates. Repository roots,
+System bindings, profile data, throughput targets, and native configuration are
+derived from installed Systems, never accepted as public caller inputs.
 
 ## Scout contract
 
@@ -327,3 +329,151 @@ Return one result even when pursuit stops before selection. Unresolved data bloc
 only its dependent opportunity or capability. Optional personalization always
 degrades to Career-owned generic defaults. Unrelated System capabilities remain
 usable.
+
+## Upskill contract
+
+Upskill reconciles current Career demand and Knowledge-owned Upskill Mappings into
+Mastery-owned Cycle Proposal lifecycles. Return a document matching
+[`resources/upskill-result.schema.json`](resources/upskill-result.schema.json).
+Agentic OS coordinates only the three canonical versioned System interfaces. It
+does not inspect a Knowledge provider, Career reports or trackers, Mastery issues
+or storage, or any System implementation module.
+
+### 1. Establish fresh readiness
+
+Resolve the installed Knowledge interface, configured Career System root, and
+configured Mastery System root. Do not fetch, upgrade, or repair a System.
+
+Run a fresh read-only `/setup-knowledge-system check` for
+`agentic-os.upskill`. Require `knowledge.project.snapshot/v1` to be ready. From
+the Career root invoke only:
+
+```text
+node main.mjs career-system.check/v1 --input -
+```
+
+Require `career.requisite.snapshot/v1`. From the Mastery root invoke only:
+
+```text
+node main.mjs setup-mastery-system check
+```
+
+Require `mastery.cycles.snapshot` and `mastery.cycles.reconcile`. A missing root,
+unsafe repository state, malformed result, or unavailable capability returns a
+blocker scoped to `agentic-os.upskill`. Do not guess a fallback, import provider
+structure, or invoke an internal System script.
+
+### 2. Acquire exactly three fresh snapshots
+
+Acquire one complete input set with exactly these revisioned snapshots:
+
+```text
+node main.mjs career.requisite.snapshot/v1 --input -
+knowledge.project.snapshot/v1
+node main.mjs mastery.cycles.snapshot
+```
+
+Send `career.requisite.snapshot.request/v1` through the Career gateway. Send the
+caller-supplied project references to the installed Knowledge interface in a
+`knowledge.project.snapshot/v1` request whose caller and capability are
+`agentic-os` and `agentic-os.upskill`. Never resolve a provider or infer a
+project, mapping, Requisite, Capability, or project seam. Let the Knowledge
+System establish those values. Treat disabled mappings as resolvable input.
+
+Require each snapshot's exact schema, revision token, observation time, and
+capability-scoped status. Keep tokens opaque. Do not parse, log, persist, or
+derive ordering from them. Keep all three snapshots only in memory or in
+permission-restricted temporary files and remove every temporary file before
+returning.
+
+An unresolved Knowledge project or mapping blocks only the affected reference.
+Partial Career coverage blocks mappings whose Requisite is not established, but
+does not block mappings backed by a returned Requisite. An unknown Mastery
+Capability blocks only its mapping. Continue independent mappings.
+
+### 3. Build one deterministic reconciliation plan
+
+Use `mapping_key` as the sole managed identity. Never synthesize or normalize it,
+and never use a title, Capability label, project label, provider identifier, or
+array position as identity. Match a mapping to Career demand only when its
+Knowledge-owned Requisite key exactly equals a returned Career `requisite_key`.
+
+For each fully resolved mapping:
+
+- request `proposal` only when the project has `mastery_enabled` value `true`,
+  the mapping is enabled, and the exact Career Requisite is current;
+- request `withdrawn` when Mastery is explicitly disabled, the mapping is
+  disabled, or complete Career coverage establishes that the Requisite is not
+  current;
+- preserve the existing Mastery lifecycle when absence, ambiguity, partial
+  coverage, a missing Capability, or an invalid prerequisite prevents a safe
+  decision.
+
+Use only the Knowledge-owned Capability key as `primary_capability_id`. Use the
+lexicographically first canonical project reference as `project_ref`. Render the
+display-only title as `Cycle: <Capability label> in <Project name>` and pass the
+Knowledge rationale unchanged.
+
+Prerequisite edges come only from `prerequisite_mapping_keys`. Validate the full
+returned mapping graph before writing. Missing keys and cycles block every
+affected dependent mapping without changing its lifecycle. Order actionable
+mappings with a stable topological sort: prerequisites first, then higher Career
+`weighted_score`, higher `opportunity_count`, higher `prevalence`, lexical
+Requisite key, and lexical `mapping_key`. Treat missing Career ranking values as
+zero only when complete Career coverage safely establishes the Requisite as not
+current. Never use input array order as a tiebreaker.
+
+### 4. Revalidate and reconcile through Mastery
+
+Immediately before a write, reacquire the Knowledge Project and Career Requisite
+snapshots through the same canonical versioned interfaces and require their opaque
+revision tokens to be unchanged. Equality-check tokens only; never interpret
+them. If either changed, discard the entire Career, Knowledge, and Mastery input
+set, rebuild all three fresh snapshots, and recompute once. Persistent drift
+returns scoped blockers. Never combine snapshot revisions.
+
+Pass the deterministic plan and the Mastery snapshot's opaque revision token to:
+
+```text
+node main.mjs mastery.cycles.reconcile --input -
+```
+
+Use `mastery.cycles.reconcile.request/v1`. Mastery alone creates or updates Cycle
+Proposals, preserves active and terminal lifecycles, materializes native
+dependencies, validates its revision, and writes operational state. Agentic OS
+must not open, edit, close, label, rank, or link a Mastery issue directly.
+
+Accept only `mastery.cycles.reconcile.result/v1`. Preserve every safe independent
+native action if another mapping blocks. Do not retry a native write after an
+ambiguous response.
+
+### 5. Verify the full graph and return one terminal result
+
+After reconciliation, acquire a fresh `mastery.cycles.snapshot/v1` through
+`mastery.cycles.snapshot`. Verify the full returned graph, not only changed
+mappings: every `mapping_key` is unique, every safe managed lifecycle matches or
+is natively preserved, every nonterminal prerequisite edge is present, no
+unexpected managed edge was introduced, and every native claimed write is
+observable. A post-check mismatch is `failed`.
+
+Return `agentic-os.upskill.result/v1` with exactly three System snapshot summaries,
+the deterministic rank, the native terminal result for every mapping, write
+count, full-graph verification, and capability-scoped blockers. Reference native
+cycles instead of copying their contents and never return revision tokens.
+
+Use terminal statuses exactly:
+
+- `completed`: all safe mappings reached or preserved their native lifecycle and
+  the full-graph post-check passed;
+- `blocked`: no write occurred and recoverable scoped blockers prevented at least
+  one mapping;
+- `incomplete`: safe writes were preserved but at least one mapping remains
+  blocked;
+- `failed`: a schema, protocol, identity, authority, native result, or full-graph
+  invariant was violated.
+
+An identical rerun after `completed` must submit the same ordered plan, receive
+only native unchanged or preserved results, pass the same full-graph post-check,
+report `writes` as zero, and write nothing in any System. Knowledge writes remain
+behind explicit `/capture` approval, and this capability never requests capture.
+Real-world Career actions remain outside this capability.

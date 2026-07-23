@@ -60,9 +60,12 @@ required_files=(
   skills/public/agentic-os/resources/pursue-knowledge-request.json
   skills/public/agentic-os/resources/pursue-result.schema.json
   skills/public/agentic-os/resources/examples/pursue-result.json
+  skills/public/agentic-os/resources/upskill-result.schema.json
+  skills/public/agentic-os/resources/examples/upskill-result.json
   scripts/bump-version.sh
   scripts/check-agentic-os-scout.py
   scripts/check-agentic-os-pursue.py
+  scripts/check-agentic-os-upskill.py
   .github/workflows/check.yml
   .github/workflows/release.yml
   skills/public/domain-reconnaissance/SKILL.md
@@ -89,6 +92,7 @@ done
 
 python3 scripts/check-agentic-os-scout.py
 python3 scripts/check-agentic-os-pursue.py
+python3 scripts/check-agentic-os-upskill.py
 
 for skill in post tweet; do
   skill_file="skills/public/$skill/SKILL.md"
