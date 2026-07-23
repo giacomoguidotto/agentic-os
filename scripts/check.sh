@@ -61,6 +61,9 @@ required_files=(
   skills/internal/setup-project/resources/repository-setup.md
   automations/internal/repo-pr-ci-repair-sweep/automation.toml
   automations/internal/repo-pr-ci-repair-sweep/prompt.md
+  automations/internal/social-compose/automation.toml
+  automations/internal/social-compose/knowledge-request.json
+  automations/internal/social-compose/prompt.md
 )
 
 for path in "${required_files[@]}"; do
@@ -182,6 +185,96 @@ done < <(find . -path ./.git -prune -o -type f -name automation.toml -print0)
 [[ "${automation_paths[renovate-pr-ci-fixer]:-}" == \
   automations/internal/repo-pr-ci-repair-sweep/automation.toml ]] \
   || fail 'PR/CI repair sweep must be defined once in the internal lane'
+[[ "${automation_paths[social-draft-pulse]:-}" == \
+  automations/internal/social-compose/automation.toml ]] \
+  || fail 'Social Compose must be defined once in the internal lane'
+
+SOCIAL_DIR=automations/internal/social-compose
+python3 - "$SOCIAL_DIR/automation.toml" "$SOCIAL_DIR/knowledge-request.json" <<'PY'
+import json
+import sys
+import tomllib
+
+automation_path, request_path = sys.argv[1:]
+with open(automation_path, "rb") as source:
+    automation = tomllib.load(source)
+with open(request_path, encoding="utf-8") as source:
+    request = json.load(source)
+
+expected_sources = {
+    "social-publishing-source": {
+        "publication-history",
+        "post-analytics",
+        "queue-timeline",
+        "queue-schedule",
+    },
+    "availability-calendar-source": {"upcoming-availability"},
+    "external-signal-source": {"current-public-signals"},
+}
+for role, capabilities in expected_sources.items():
+    actual = set(automation.get("sources", {}).get(role, {}).get("capabilities", []))
+    if actual != capabilities:
+        raise SystemExit(f"check: Social Compose source contract is invalid: {role}")
+
+sink = automation.get("sinks", {}).get("social-draft-queue", {})
+if set(sink.get("capabilities", [])) != {"create-draft", "schedule-draft"}:
+    raise SystemExit("check: Social Compose sink contract is invalid")
+if sink.get("authority") != "approval-gated":
+    raise SystemExit("check: Social Compose sink is not approval-gated")
+
+validation = automation.get("validation", {})
+if validation.get("profile") != "non-publishing":
+    raise SystemExit("check: Social Compose validation profile is not non-publishing")
+if validation.get("sink_capabilities") != []:
+    raise SystemExit("check: Social Compose validation grants sink capabilities")
+required_prohibitions = {"create-draft", "schedule-draft", "publish"}
+if not required_prohibitions.issubset(set(validation.get("prohibited_actions", []))):
+    raise SystemExit("check: Social Compose validation can mutate social content")
+
+if automation.get("knowledge_request_file") != "knowledge-request.json":
+    raise SystemExit("check: Social Compose does not name its Knowledge Request")
+if request.get("interface") != "knowledge-system-interface/v1":
+    raise SystemExit("check: Social Compose Knowledge Request is not provider-blind")
+if request.get("caller") != "agentic-os":
+    raise SystemExit("check: Social Compose Knowledge Request caller is invalid")
+if request.get("capability") != "agentic-os.social-compose":
+    raise SystemExit("check: Social Compose Knowledge Request capability is invalid")
+
+roles = request.get("roles", {})
+if roles.get("required") != ["social-rules-of-engagement"]:
+    raise SystemExit("check: Social Compose required Knowledge roles are not minimal")
+allowed_roles = {
+    "social-rules-of-engagement",
+    "selected-projects",
+    "public-safe-claim-source",
+    "identity",
+    "point-of-view",
+    "published-social-context",
+}
+requested_roles = set(roles.get("required", [])) | set(roles.get("optional", []))
+if requested_roles != allowed_roles:
+    raise SystemExit("check: Social Compose Knowledge roles are invalid")
+
+mandate = request.get("mandate", {})
+if set(mandate.get("read_roles", [])) != allowed_roles:
+    raise SystemExit("check: Social Compose read mandate exceeds its request")
+if set(mandate.get("capture_roles", [])) != {
+    "point-of-view",
+    "published-social-context",
+}:
+    raise SystemExit("check: Social Compose capture mandate is invalid")
+if not set(mandate.get("public_facing_roles", [])).issubset(allowed_roles):
+    raise SystemExit("check: Social Compose public-facing mandate is invalid")
+PY
+
+if grep -IREn 'Notion|Typefully|Buffer|Hootsuite' "$SOCIAL_DIR"; then
+  fail 'Social Compose contains a provider-specific dependency'
+fi
+
+grep -Fq 'This automation has no publishing authority.' "$SOCIAL_DIR/prompt.md" \
+  || fail 'Social Compose does not separate publishing authority'
+grep -Fqi 'do not call any sink capability' "$SOCIAL_DIR/prompt.md" \
+  || fail 'Social Compose non-publishing validation can mutate its sink'
 
 if find skills/public -mindepth 2 -maxdepth 2 -type f ! -name SKILL.md -print -quit \
   | grep -q .; then
