@@ -358,10 +358,13 @@ Require `career.requisite.snapshot/v1`. From the Mastery root invoke only:
 node main.mjs setup-mastery-system check
 ```
 
-Require `mastery.cycles.snapshot` and `mastery.cycles.reconcile`. A missing root,
-unsafe repository state, malformed result, or unavailable capability returns a
-blocker scoped to `agentic-os.upskill`. Do not guess a fallback, import provider
-structure, or invoke an internal System script.
+Require the standalone Mastery setup result to be ready. Establish
+`mastery.cycles.snapshot` availability from the valid snapshot acquired in the
+next step, and establish `mastery.cycles.reconcile` availability only through its
+canonical versioned result when reconciliation is needed. A missing root, unsafe
+repository state, malformed result, or unavailable capability returns a blocker
+scoped to `agentic-os.upskill`. Do not guess a fallback, import provider structure,
+or invoke an internal System script.
 
 ### 2. Acquire exactly three fresh snapshots
 
@@ -380,11 +383,13 @@ caller-supplied project references to the installed Knowledge interface in a
 project, mapping, Requisite, Capability, or project seam. Let the Knowledge
 System establish those values. Treat disabled mappings as resolvable input.
 
-Require each snapshot's exact schema, revision token, observation time, and
-capability-scoped status. Keep tokens opaque. Do not parse, log, persist, or
-derive ordering from them. Keep all three snapshots only in memory or in
-permission-restricted temporary files and remove every temporary file before
-returning.
+Require each snapshot's exact schema, revision token, and observation time.
+Require Career's native `status`, Knowledge's native `capability_status`, and
+Mastery's native capability identifier `mastery.cycles.snapshot`; do not require
+a status field that a System snapshot contract does not declare. Keep tokens
+opaque. Do not parse, log, persist, or derive ordering from them. Keep all three
+snapshots only in memory or in permission-restricted temporary files and remove
+every temporary file before returning.
 
 An unresolved Knowledge project or mapping blocks only the affected reference.
 Partial Career coverage blocks mappings whose Requisite is not established, but

@@ -147,6 +147,7 @@ for required_text in (
     "knowledge.project.snapshot/v1",
     "mastery.cycles.snapshot",
     "mastery.cycles.reconcile",
+    "a status field that a System snapshot contract does not declare",
     "mapping_key` as the sole managed identity",
     "stable topological sort",
     "Verify the full returned graph",
