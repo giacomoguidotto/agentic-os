@@ -52,7 +52,13 @@ required_files=(
   skills/public/post/agents/openai.yaml
   skills/public/tweet/SKILL.md
   skills/public/tweet/agents/openai.yaml
+  skills/public/agentic-os/SKILL.md
+  skills/public/agentic-os/agents/openai.yaml
+  skills/public/agentic-os/resources/scout-knowledge-request.json
+  skills/public/agentic-os/resources/scout-result.schema.json
+  skills/public/agentic-os/resources/examples/scout-result.json
   scripts/bump-version.sh
+  scripts/check-agentic-os-scout.py
   .github/workflows/check.yml
   .github/workflows/release.yml
   skills/public/domain-reconnaissance/SKILL.md
@@ -72,6 +78,8 @@ required_files=(
 for path in "${required_files[@]}"; do
   [[ -s "$path" ]] || fail "required source is missing or empty: $path"
 done
+
+python3 scripts/check-agentic-os-scout.py
 
 for skill in post tweet; do
   skill_file="skills/public/$skill/SKILL.md"
