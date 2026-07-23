@@ -67,8 +67,11 @@ required_files=(
   skills/public/orchestrate/references/IMPLEMENTER.md
   skills/public/orchestrate/references/REVIEW.md
   skills/public/orchestrate/references/REVIEWER.md
+  skills/public/orchestrate/references/RECOVERY.md
   skills/public/orchestrate/references/RUNTIME.md
   skills/public/orchestrate/agents/openai.yaml
+  skills/public/orchestrate/scripts/conductor-state.mjs
+  skills/public/orchestrate/scripts/conductor-state.test.mjs
   skills/public/orchestrate/scripts/liveness-contract.test.mjs
   skills/public/orchestrate/scripts/render-graph.mjs
   skills/public/orchestrate/scripts/render-graph.test.mjs
