@@ -73,6 +73,8 @@ required_files=(
   automations/internal/portfolio-refresh/automation.toml
   automations/internal/portfolio-refresh/knowledge-request.json
   automations/internal/portfolio-refresh/prompt.md
+  automations/internal/job-scout/automation.toml
+  automations/internal/job-scout/prompt.md
 )
 
 for path in "${required_files[@]}"; do
@@ -421,6 +423,71 @@ grep -Fqi 'Never merge, deploy, publish' "$PORTFOLIO_DIR/prompt.md" \
   || fail 'Portfolio Refresh lacks terminal authority boundaries'
 grep -Fqi 'mutate Knowledge' "$PORTFOLIO_DIR/prompt.md" \
   || fail 'Portfolio Refresh can mutate Knowledge'
+
+[[ "${automation_paths[career-ops-scan-and-evaluate]:-}" == \
+  automations/internal/job-scout/automation.toml ]] \
+  || fail 'Job Scout must be defined once in the internal lane'
+
+JOB_SCOUT_DIR=automations/internal/job-scout
+python3 - "$JOB_SCOUT_DIR/automation.toml" <<'PY'
+import sys
+import tomllib
+
+with open(sys.argv[1], "rb") as source:
+    automation = tomllib.load(source)
+
+invocation = automation.get("invocation", {})
+if invocation.get("capability") != "agentic-os.scout":
+    raise SystemExit("check: Job Scout does not invoke agentic-os.scout")
+if invocation.get("arguments") != ["--target", "30"]:
+    raise SystemExit("check: Job Scout target is invalid")
+
+if automation.get("prompt_file") != "prompt.md":
+    raise SystemExit("check: Job Scout does not name its bundled prompt")
+
+validation = automation.get("validation", {})
+if validation.get("profile") != "non-publishing-no-write":
+    raise SystemExit("check: Job Scout validation is not non-publishing and no-write")
+if validation.get("invoke_capability") is not False:
+    raise SystemExit("check: Job Scout validation invokes a mutating capability")
+if validation.get("source_capabilities") != []:
+    raise SystemExit("check: Job Scout validation grants source capabilities")
+if validation.get("sink_capabilities") != []:
+    raise SystemExit("check: Job Scout validation grants sink capabilities")
+required_prohibitions = {
+    "application",
+    "outreach",
+    "message",
+    "knowledge-write",
+    "career-write",
+    "publish",
+}
+if not required_prohibitions.issubset(
+    set(validation.get("prohibited_actions", []))
+):
+    raise SystemExit("check: Job Scout validation permits external or System writes")
+PY
+
+grep -Fq 'Invoke only the installed `agentic-os.scout` capability' \
+  "$JOB_SCOUT_DIR/prompt.md" \
+  || fail 'Job Scout does not route through agentic-os.scout'
+grep -Fqi 'do not invoke `agentic-os.scout` or any System capability' \
+  "$JOB_SCOUT_DIR/prompt.md" \
+  || fail 'Job Scout validation can invoke a mutating capability'
+grep -Fqi 'submit an application' "$JOB_SCOUT_DIR/prompt.md" \
+  || fail 'Job Scout validation can submit an application'
+grep -Fqi 'perform outreach' "$JOB_SCOUT_DIR/prompt.md" \
+  || fail 'Job Scout validation can perform outreach'
+grep -Fqi 'send a message' "$JOB_SCOUT_DIR/prompt.md" \
+  || fail 'Job Scout validation can send a message'
+grep -Fqi 'write to Knowledge' "$JOB_SCOUT_DIR/prompt.md" \
+  || fail 'Job Scout validation can write to Knowledge'
+
+if grep -IREn \
+  'node main\.mjs|career\.opportunity\.discover|career\.profile\.|knowledge-system-interface|/lookup|/capture' \
+  "$JOB_SCOUT_DIR"; then
+  fail 'Job Scout duplicates Career or Knowledge semantics'
+fi
 
 if find skills/public -mindepth 2 -maxdepth 2 -type f ! -name SKILL.md -print -quit \
   | grep -q .; then

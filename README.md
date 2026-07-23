@@ -23,6 +23,8 @@ releases independently.
   Compose release module and its non-publishing validation contract.
 - `automations/internal/portfolio-refresh/`: the canonical public-safe Portfolio
   Refresh release module and its proposal-only validation contract.
+- `automations/internal/job-scout/`: the canonical scheduled Job Scout release
+  module, invoking `agentic-os.scout` with non-publishing, no-write validation.
 - `scripts/check.sh`: public-safety, ownership, and source-shape validation.
 - `.github/workflows/`: clean-clone validation and independent tag releases.
 
