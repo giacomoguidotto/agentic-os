@@ -21,3 +21,17 @@ Use Conventional Commits. `feat` triggers a minor release, `fix` triggers a patc
 release, and a `!` marker or `BREAKING CHANGE` footer triggers a major release.
 Other commit types do not release. Tags are independent Agentic OS versions and do
 not assert compatibility with System releases.
+
+## Agent skills
+
+### Issue tracker
+
+Issues and PRDs are tracked in GitHub Issues. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Triage uses the five default canonical labels. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+This repository uses the single-context layout. See `docs/agents/domain.md`.
