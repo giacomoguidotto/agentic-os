@@ -64,6 +64,9 @@ required_files=(
   automations/internal/social-compose/automation.toml
   automations/internal/social-compose/knowledge-request.json
   automations/internal/social-compose/prompt.md
+  automations/internal/portfolio-refresh/automation.toml
+  automations/internal/portfolio-refresh/knowledge-request.json
+  automations/internal/portfolio-refresh/prompt.md
 )
 
 for path in "${required_files[@]}"; do
@@ -295,6 +298,121 @@ grep -Fq 'This automation has no publishing authority.' "$SOCIAL_DIR/prompt.md" 
   || fail 'Social Compose does not separate publishing authority'
 grep -Fqi 'do not call any sink capability' "$SOCIAL_DIR/prompt.md" \
   || fail 'Social Compose non-publishing validation can mutate its sink'
+
+[[ "${automation_paths[portfolio-surface-sweep]:-}" == \
+  automations/internal/portfolio-refresh/automation.toml ]] \
+  || fail 'Portfolio Refresh must be defined once in the internal lane'
+
+PORTFOLIO_DIR=automations/internal/portfolio-refresh
+python3 - "$PORTFOLIO_DIR/automation.toml" \
+  "$PORTFOLIO_DIR/knowledge-request.json" <<'PY'
+import json
+import sys
+import tomllib
+
+automation_path, request_path = sys.argv[1:]
+with open(automation_path, "rb") as source:
+    automation = tomllib.load(source)
+with open(request_path, encoding="utf-8") as source:
+    request = json.load(source)
+
+source = automation.get("sources", {}).get("portfolio-source", {})
+if source.get("required") is not True:
+    raise SystemExit("check: Portfolio Refresh source is not required")
+if set(source.get("capabilities", [])) != {
+    "repository-instructions",
+    "current-state",
+}:
+    raise SystemExit("check: Portfolio Refresh source contract is invalid")
+
+sink = automation.get("sinks", {}).get("portfolio", {})
+if set(sink.get("capabilities", [])) != {
+    "create-branch",
+    "edit-files",
+    "run-validation",
+    "open-draft-pr",
+}:
+    raise SystemExit("check: Portfolio Refresh sink contract is invalid")
+if sink.get("authority") != "approval-gated":
+    raise SystemExit("check: Portfolio Refresh sink is not approval-gated")
+
+validation = automation.get("validation", {})
+if validation.get("profile") != "proposal-only":
+    raise SystemExit("check: Portfolio Refresh validation is not proposal-only")
+if set(validation.get("source_capabilities", [])) != {
+    "repository-instructions",
+    "current-state",
+}:
+    raise SystemExit("check: Portfolio Refresh validation source contract is invalid")
+if validation.get("sink_capabilities") != []:
+    raise SystemExit("check: Portfolio Refresh validation grants sink capabilities")
+required_prohibitions = {
+    "create-branch",
+    "edit-files",
+    "open-draft-pr",
+    "merge",
+    "deploy",
+    "publish",
+    "knowledge-capture",
+}
+if not required_prohibitions.issubset(
+    set(validation.get("prohibited_actions", []))
+):
+    raise SystemExit("check: Portfolio Refresh validation permits mutation")
+
+if automation.get("knowledge_request_file") != "knowledge-request.json":
+    raise SystemExit("check: Portfolio Refresh does not name its Knowledge Request")
+if request.get("interface") != "knowledge-system-interface/v1":
+    raise SystemExit("check: Portfolio Refresh Knowledge Request is not versioned")
+if request.get("caller") != "agentic-os":
+    raise SystemExit("check: Portfolio Refresh Knowledge Request caller is invalid")
+if request.get("capability") != "agentic-os.portfolio-refresh":
+    raise SystemExit("check: Portfolio Refresh Knowledge Request capability is invalid")
+
+roles = request.get("roles", {})
+if roles.get("required") != ["portfolio-change-rules"]:
+    raise SystemExit("check: Portfolio Refresh required Knowledge roles are invalid")
+allowed_roles = {
+    "public-safe-claim-source",
+    "network",
+    "selected-projects",
+    "portfolio-change-rules",
+    "identity",
+}
+requested_roles = set(roles.get("required", [])) | set(
+    roles.get("optional", [])
+)
+if requested_roles != allowed_roles:
+    raise SystemExit("check: Portfolio Refresh Knowledge roles are invalid")
+
+mandate = request.get("mandate", {})
+if set(mandate.get("read_roles", [])) != allowed_roles:
+    raise SystemExit("check: Portfolio Refresh read mandate exceeds its request")
+if mandate.get("capture_roles") != []:
+    raise SystemExit("check: Portfolio Refresh capture mandate is not empty")
+public_roles = {
+    "public-safe-claim-source",
+    "network",
+    "selected-projects",
+    "identity",
+}
+if set(mandate.get("public_facing_roles", [])) != public_roles:
+    raise SystemExit("check: Portfolio Refresh public-facing roles are invalid")
+PY
+
+if grep -IREn 'Notion|Vercel|Netlify' "$PORTFOLIO_DIR"; then
+  fail 'Portfolio Refresh contains a provider-specific dependency'
+fi
+
+grep -Fq 'This automation has no Knowledge capture authority.' \
+  "$PORTFOLIO_DIR/prompt.md" \
+  || fail 'Portfolio Refresh does not declare its empty capture mandate'
+grep -Fqi 'do not call any sink capability' "$PORTFOLIO_DIR/prompt.md" \
+  || fail 'Portfolio Refresh proposal-only validation can mutate its sink'
+grep -Fqi 'Never merge, deploy, publish' "$PORTFOLIO_DIR/prompt.md" \
+  || fail 'Portfolio Refresh lacks terminal authority boundaries'
+grep -Fqi 'mutate Knowledge' "$PORTFOLIO_DIR/prompt.md" \
+  || fail 'Portfolio Refresh can mutate Knowledge'
 
 if find skills/public -mindepth 2 -maxdepth 2 -type f ! -name SKILL.md -print -quit \
   | grep -q .; then
