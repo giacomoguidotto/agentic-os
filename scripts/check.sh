@@ -73,6 +73,10 @@ required_files=(
   scripts/check-agentic-os-pursue.py
   scripts/check-agentic-os-upskill.py
   scripts/check-setup-agentic-os.py
+  scripts/check-migration-rehearsal.py
+  scripts/fixtures/migration-bundle-command.py
+  scripts/fixtures/migration-releases.json
+  scripts/fixtures/migration-system-command.py
   .github/workflows/check.yml
   .github/workflows/release.yml
   skills/public/domain-reconnaissance/SKILL.md
@@ -101,6 +105,7 @@ python3 scripts/check-agentic-os-scout.py
 python3 scripts/check-agentic-os-pursue.py
 python3 scripts/check-agentic-os-upskill.py
 python3 scripts/check-setup-agentic-os.py
+python3 scripts/check-migration-rehearsal.py
 
 for skill in post tweet; do
   skill_file="skills/public/$skill/SKILL.md"

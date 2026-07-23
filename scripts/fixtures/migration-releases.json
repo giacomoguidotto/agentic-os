@@ -1,0 +1,42 @@
+{
+  "schema": "agentic-os.migration-release-fixtures/v1",
+  "sources": [
+    {
+      "repository": "giacomoguidotto/agentic-os",
+      "release_id": 7101,
+      "tag": "v9000.71.1",
+      "commit": "60c96a16322801bb78d78856cdb8ee1342b05487",
+      "immutable": true,
+      "exports": ["skills/public/*"]
+    },
+    {
+      "repository": "giacomoguidotto/knowledge-system",
+      "release_id": 7102,
+      "tag": "v9000.71.1",
+      "commit": "4e78c6cc5d58ad60cb679ea3df45000388e64116",
+      "immutable": true,
+      "exports": ["skills/public/*"]
+    },
+    {
+      "repository": "giacomoguidotto/mastery-system",
+      "release_id": 7103,
+      "tag": "v9000.71.1",
+      "commit": "204fb628770ef63b39d93f2af138ccb4c33e900e",
+      "immutable": true,
+      "exports": ["skills/public/*"]
+    },
+    {
+      "repository": "giacomoguidotto/career-system",
+      "release_id": 7104,
+      "tag": "v9000.71.1",
+      "commit": "6ce881e3a5c8bc0140fca73d7d6e66247b0929a3",
+      "immutable": true,
+      "exports": ["skills/public/setup-career-system"]
+    }
+  ],
+  "publisher": {
+    "repository": "giacomoguidotto/skills",
+    "commit": "215f39656951f06bfb424a2e3af8b56e9aa42154",
+    "contract": "distribution-provenance/v1"
+  }
+}
