@@ -62,28 +62,35 @@ required_files=(
   skills/public/agentic-os/resources/examples/pursue-result.json
   skills/public/agentic-os/resources/upskill-result.schema.json
   skills/public/agentic-os/resources/examples/upskill-result.json
+  skills/public/setup-agentic-os/SKILL.md
+  skills/public/setup-agentic-os/agents/openai.yaml
+  skills/public/setup-agentic-os/resources/system-contracts.json
+  skills/public/setup-agentic-os/resources/automation-migration.json
+  skills/public/setup-agentic-os/scripts/setup-agentic-os.py
+  skills/public/setup-agentic-os/scripts/reconcile-automation-sources.py
   scripts/bump-version.sh
   scripts/check-agentic-os-scout.py
   scripts/check-agentic-os-pursue.py
   scripts/check-agentic-os-upskill.py
+  scripts/check-setup-agentic-os.py
   .github/workflows/check.yml
   .github/workflows/release.yml
   skills/public/domain-reconnaissance/SKILL.md
   skills/internal/setup-project/SKILL.md
   skills/internal/setup-project/agents/openai.yaml
   skills/internal/setup-project/resources/repository-setup.md
-  automations/internal/repo-pr-ci-repair-sweep/automation.toml
-  automations/internal/repo-pr-ci-repair-sweep/prompt.md
-  automations/internal/social-compose/automation.toml
-  automations/internal/social-compose/knowledge-request.json
-  automations/internal/social-compose/prompt.md
-  automations/internal/portfolio-refresh/automation.toml
-  automations/internal/portfolio-refresh/knowledge-request.json
-  automations/internal/portfolio-refresh/prompt.md
-  automations/internal/job-scout/automation.toml
-  automations/internal/job-scout/prompt.md
-  automations/internal/job-pursue/automation.toml
-  automations/internal/job-pursue/prompt.md
+  skills/public/setup-agentic-os/resources/automations/repo-pr-ci-repair-sweep/automation.toml
+  skills/public/setup-agentic-os/resources/automations/repo-pr-ci-repair-sweep/prompt.md
+  skills/public/setup-agentic-os/resources/automations/social-compose/automation.toml
+  skills/public/setup-agentic-os/resources/automations/social-compose/knowledge-request.json
+  skills/public/setup-agentic-os/resources/automations/social-compose/prompt.md
+  skills/public/setup-agentic-os/resources/automations/portfolio-refresh/automation.toml
+  skills/public/setup-agentic-os/resources/automations/portfolio-refresh/knowledge-request.json
+  skills/public/setup-agentic-os/resources/automations/portfolio-refresh/prompt.md
+  skills/public/setup-agentic-os/resources/automations/job-scout/automation.toml
+  skills/public/setup-agentic-os/resources/automations/job-scout/prompt.md
+  skills/public/setup-agentic-os/resources/automations/job-pursue/automation.toml
+  skills/public/setup-agentic-os/resources/automations/job-pursue/prompt.md
 )
 
 for path in "${required_files[@]}"; do
@@ -93,6 +100,7 @@ done
 python3 scripts/check-agentic-os-scout.py
 python3 scripts/check-agentic-os-pursue.py
 python3 scripts/check-agentic-os-upskill.py
+python3 scripts/check-setup-agentic-os.py
 
 for skill in post tweet; do
   skill_file="skills/public/$skill/SKILL.md"
@@ -152,6 +160,7 @@ path_is_prohibited docs/constellation.md \
   && fail 'source policy rejects the canonical constellation document'
 
 while IFS= read -r -d '' path; do
+  [[ -e "$path" ]] || continue
   path_is_prohibited "$path" && fail "prohibited source path: $path"
 
   [[ ! -L "$path" ]] || fail "source must be self-contained, symlink found: $path"
@@ -194,8 +203,8 @@ declare -A automation_paths=()
 while IFS= read -r -d '' automation_file; do
   automation_file=${automation_file#./}
   case "$automation_file" in
-    automations/internal/*/automation.toml) ;;
-    *) fail "automation definition is outside the internal lane: $automation_file" ;;
+    skills/public/setup-agentic-os/resources/automations/*/automation.toml) ;;
+    *) fail "automation definition is outside the setup resource lane: $automation_file" ;;
   esac
 
   automation_id=$(sed -n 's/^id[[:space:]]*=[[:space:]]*"\([^"]*\)".*/\1/p' \
@@ -207,13 +216,13 @@ while IFS= read -r -d '' automation_file; do
 done < <(find . -path ./.git -prune -o -type f -name automation.toml -print0)
 
 [[ "${automation_paths[renovate-pr-ci-fixer]:-}" == \
-  automations/internal/repo-pr-ci-repair-sweep/automation.toml ]] \
-  || fail 'PR/CI repair sweep must be defined once in the internal lane'
+  skills/public/setup-agentic-os/resources/automations/repo-pr-ci-repair-sweep/automation.toml ]] \
+  || fail 'PR/CI repair sweep must be defined once in the setup resource lane'
 [[ "${automation_paths[social-draft-pulse]:-}" == \
-  automations/internal/social-compose/automation.toml ]] \
-  || fail 'Social Compose must be defined once in the internal lane'
+  skills/public/setup-agentic-os/resources/automations/social-compose/automation.toml ]] \
+  || fail 'Social Compose must be defined once in the setup resource lane'
 
-SOCIAL_DIR=automations/internal/social-compose
+SOCIAL_DIR=skills/public/setup-agentic-os/resources/automations/social-compose
 python3 - "$SOCIAL_DIR/automation.toml" "$SOCIAL_DIR/knowledge-request.json" <<'PY'
 import json
 import sys
@@ -321,10 +330,10 @@ grep -Fqi 'do not call any sink capability' "$SOCIAL_DIR/prompt.md" \
   || fail 'Social Compose non-publishing validation can mutate its sink'
 
 [[ "${automation_paths[portfolio-surface-sweep]:-}" == \
-  automations/internal/portfolio-refresh/automation.toml ]] \
-  || fail 'Portfolio Refresh must be defined once in the internal lane'
+  skills/public/setup-agentic-os/resources/automations/portfolio-refresh/automation.toml ]] \
+  || fail 'Portfolio Refresh must be defined once in the setup resource lane'
 
-PORTFOLIO_DIR=automations/internal/portfolio-refresh
+PORTFOLIO_DIR=skills/public/setup-agentic-os/resources/automations/portfolio-refresh
 python3 - "$PORTFOLIO_DIR/automation.toml" \
   "$PORTFOLIO_DIR/knowledge-request.json" <<'PY'
 import json
@@ -436,10 +445,10 @@ grep -Fqi 'mutate Knowledge' "$PORTFOLIO_DIR/prompt.md" \
   || fail 'Portfolio Refresh can mutate Knowledge'
 
 [[ "${automation_paths[career-ops-scan-and-evaluate]:-}" == \
-  automations/internal/job-scout/automation.toml ]] \
-  || fail 'Job Scout must be defined once in the internal lane'
+  skills/public/setup-agentic-os/resources/automations/job-scout/automation.toml ]] \
+  || fail 'Job Scout must be defined once in the setup resource lane'
 
-JOB_SCOUT_DIR=automations/internal/job-scout
+JOB_SCOUT_DIR=skills/public/setup-agentic-os/resources/automations/job-scout
 python3 - "$JOB_SCOUT_DIR/automation.toml" <<'PY'
 import sys
 import tomllib
@@ -501,10 +510,10 @@ if grep -IREn \
 fi
 
 [[ "${automation_paths[job-hunt-advancement-pulse]:-}" == \
-  automations/internal/job-pursue/automation.toml ]] \
-  || fail 'Job Pursue must be defined once in the internal lane'
+  skills/public/setup-agentic-os/resources/automations/job-pursue/automation.toml ]] \
+  || fail 'Job Pursue must be defined once in the setup resource lane'
 
-JOB_PURSUE_DIR=automations/internal/job-pursue
+JOB_PURSUE_DIR=skills/public/setup-agentic-os/resources/automations/job-pursue
 python3 - "$JOB_PURSUE_DIR/automation.toml" <<'PY'
 import sys
 import tomllib

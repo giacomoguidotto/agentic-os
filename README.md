@@ -15,18 +15,15 @@ releases independently.
 - `skills/public/`: self-contained public release modules, including
   `/agentic-os scout`, `/agentic-os pursue`, `/agentic-os upskill`, and the
   provider-neutral `/post` and `/tweet` authoring surfaces.
+- `skills/public/setup-agentic-os/`: the roots-only, stateless constellation
+  setup composer, its fixed System contracts, canonical automation resources,
+  and migration tooling.
 - `docs/adr/`: architectural decisions owned by Agentic OS.
 - `skills/public/`: the positive public export surface.
 - `skills/internal/`: committed internal skills, excluded from public export.
-- `automations/internal/`: committed internal automation definitions.
-- `automations/internal/social-compose/`: the canonical provider-neutral Social
-  Compose release module and its non-publishing validation contract.
-- `automations/internal/portfolio-refresh/`: the canonical public-safe Portfolio
-  Refresh release module and its proposal-only validation contract.
-- `automations/internal/job-scout/`: the canonical scheduled Job Scout release
-  module, invoking `agentic-os.scout` with non-publishing, no-write validation.
-- `automations/internal/job-pursue/`: the canonical scheduled Job Pursue release
-  module, invoking `agentic-os.pursue` while preserving action and evidence gates.
+- `skills/public/setup-agentic-os/resources/automations/`: the one canonical
+  source for Agentic OS-owned automation definitions, carried by setup without
+  installation-local state.
 - `scripts/check.sh`: public-safety, ownership, and source-shape validation.
 - `.github/workflows/`: clean-clone validation and independent tag releases.
 
