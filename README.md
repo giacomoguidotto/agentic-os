@@ -19,6 +19,10 @@ releases independently.
 - `skills/public/`: the positive public export surface.
 - `skills/internal/`: committed internal skills, excluded from public export.
 - `automations/internal/`: committed internal automation definitions.
+- `automations/internal/social-compose/`: the canonical provider-neutral Social
+  Compose release module and its non-publishing validation contract.
+- `automations/internal/portfolio-refresh/`: the canonical public-safe Portfolio
+  Refresh release module and its proposal-only validation contract.
 - `scripts/check.sh`: public-safety, ownership, and source-shape validation.
 - `.github/workflows/`: clean-clone validation and independent tag releases.
 
