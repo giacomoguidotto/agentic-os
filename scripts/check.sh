@@ -598,5 +598,7 @@ grep -Fq 'gh release create' .github/workflows/release.yml \
   || fail 'release workflow does not publish a stable GitHub release'
 grep -Fq -- '--verify-tag' .github/workflows/release.yml \
   || fail 'release workflow can publish without a verified source tag'
+grep -Fq 'gh release view' .github/workflows/release.yml \
+  || fail 'release workflow cannot resume after a partial publication'
 
 printf 'check: ok\n'

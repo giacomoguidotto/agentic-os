@@ -9,7 +9,17 @@ elif [[ $# -gt 0 ]]; then
   exit 2
 fi
 
-latest_tag=$(git tag --list 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | head -n1)
+tag_pattern='v[0-9]*.[0-9]*.[0-9]*'
+head_tag=$(git tag --points-at HEAD --list "$tag_pattern" --sort=-v:refname | head -n1)
+if [[ -n "$head_tag" ]]; then
+  printf 'Release tag already points at HEAD: %s\n' "$head_tag"
+  if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
+    printf 'tag=%s\n' "$head_tag" >> "$GITHUB_OUTPUT"
+  fi
+  exit 0
+fi
+
+latest_tag=$(git tag --list "$tag_pattern" --sort=-v:refname | head -n1)
 if [[ -z "$latest_tag" ]]; then
   latest_tag=v0.0.0
   range=HEAD
