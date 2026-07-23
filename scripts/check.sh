@@ -203,18 +203,33 @@ with open(request_path, encoding="utf-8") as source:
 
 expected_sources = {
     "social-publishing-source": {
-        "publication-history",
-        "post-analytics",
-        "queue-timeline",
-        "queue-schedule",
+        "required": True,
+        "capabilities": {
+            "publication-history",
+            "post-analytics",
+            "queue-timeline",
+            "queue-schedule",
+        },
     },
-    "availability-calendar-source": {"upcoming-availability"},
-    "external-signal-source": {"current-public-signals"},
+    "availability-calendar-source": {
+        "required": False,
+        "capabilities": {"upcoming-availability"},
+    },
+    "external-signal-source": {
+        "required": False,
+        "capabilities": {"current-public-signals"},
+    },
 }
-for role, capabilities in expected_sources.items():
-    actual = set(automation.get("sources", {}).get(role, {}).get("capabilities", []))
-    if actual != capabilities:
+sources = automation.get("sources", {})
+if set(sources) != set(expected_sources):
+    raise SystemExit("check: Social Compose source roles are invalid")
+for role, expected in expected_sources.items():
+    source = sources.get(role, {})
+    actual = set(source.get("capabilities", []))
+    if actual != expected["capabilities"]:
         raise SystemExit(f"check: Social Compose source contract is invalid: {role}")
+    if source.get("required") is not expected["required"]:
+        raise SystemExit(f"check: Social Compose source requirement is invalid: {role}")
 
 sink = automation.get("sinks", {}).get("social-draft-queue", {})
 if set(sink.get("capabilities", [])) != {"create-draft", "schedule-draft"}:
@@ -225,6 +240,11 @@ if sink.get("authority") != "approval-gated":
 validation = automation.get("validation", {})
 if validation.get("profile") != "non-publishing":
     raise SystemExit("check: Social Compose validation profile is not non-publishing")
+declared_source_capabilities = set().union(
+    *(source["capabilities"] for source in expected_sources.values())
+)
+if set(validation.get("source_capabilities", [])) != declared_source_capabilities:
+    raise SystemExit("check: Social Compose validation source capabilities are invalid")
 if validation.get("sink_capabilities") != []:
     raise SystemExit("check: Social Compose validation grants sink capabilities")
 required_prohibitions = {"create-draft", "schedule-draft", "publish"}
