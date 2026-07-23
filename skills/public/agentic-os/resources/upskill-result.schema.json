@@ -35,9 +35,36 @@
       "additionalProperties": false,
       "required": ["career", "knowledge", "mastery"],
       "properties": {
-        "career": { "$ref": "#/$defs/snapshot" },
-        "knowledge": { "$ref": "#/$defs/snapshot" },
-        "mastery": { "$ref": "#/$defs/snapshot" }
+        "career": {
+          "allOf": [
+            { "$ref": "#/$defs/snapshot" },
+            {
+              "properties": {
+                "schema": { "const": "career.requisite.snapshot/v1" }
+              }
+            }
+          ]
+        },
+        "knowledge": {
+          "allOf": [
+            { "$ref": "#/$defs/snapshot" },
+            {
+              "properties": {
+                "schema": { "const": "knowledge.project.snapshot/v1" }
+              }
+            }
+          ]
+        },
+        "mastery": {
+          "allOf": [
+            { "$ref": "#/$defs/snapshot" },
+            {
+              "properties": {
+                "schema": { "const": "mastery.cycles.snapshot/v1" }
+              }
+            }
+          ]
+        }
       }
     },
     "ranking": {
