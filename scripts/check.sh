@@ -79,6 +79,8 @@ required_files=(
   automations/internal/portfolio-refresh/prompt.md
   automations/internal/job-scout/automation.toml
   automations/internal/job-scout/prompt.md
+  automations/internal/job-pursue/automation.toml
+  automations/internal/job-pursue/prompt.md
 )
 
 for path in "${required_files[@]}"; do
@@ -492,6 +494,77 @@ if grep -IREn \
   'node main\.mjs|career\.opportunity\.discover|career\.profile\.|knowledge-system-interface|/lookup|/capture' \
   "$JOB_SCOUT_DIR"; then
   fail 'Job Scout duplicates Career or Knowledge semantics'
+fi
+
+[[ "${automation_paths[job-hunt-advancement-pulse]:-}" == \
+  automations/internal/job-pursue/automation.toml ]] \
+  || fail 'Job Pursue must be defined once in the internal lane'
+
+JOB_PURSUE_DIR=automations/internal/job-pursue
+python3 - "$JOB_PURSUE_DIR/automation.toml" <<'PY'
+import sys
+import tomllib
+
+with open(sys.argv[1], "rb") as source:
+    automation = tomllib.load(source)
+
+invocation = automation.get("invocation", {})
+if invocation.get("capability") != "agentic-os.pursue":
+    raise SystemExit("check: Job Pursue does not invoke agentic-os.pursue")
+if invocation.get("arguments") != []:
+    raise SystemExit("check: Job Pursue declares unsupported arguments")
+
+if automation.get("prompt_file") != "prompt.md":
+    raise SystemExit("check: Job Pursue does not name its bundled prompt")
+
+validation = automation.get("validation", {})
+if validation.get("profile") != "non-publishing-no-write":
+    raise SystemExit("check: Job Pursue validation is not non-publishing and no-write")
+if validation.get("invoke_capability") is not False:
+    raise SystemExit("check: Job Pursue validation invokes a mutating capability")
+if validation.get("source_capabilities") != []:
+    raise SystemExit("check: Job Pursue validation grants source capabilities")
+if validation.get("sink_capabilities") != []:
+    raise SystemExit("check: Job Pursue validation grants sink capabilities")
+required_prohibitions = {
+    "application",
+    "outreach",
+    "message",
+    "contact",
+    "factual-event-write",
+    "knowledge-write",
+    "career-write",
+    "publish",
+}
+if not required_prohibitions.issubset(
+    set(validation.get("prohibited_actions", []))
+):
+    raise SystemExit("check: Job Pursue validation permits external or System writes")
+PY
+
+grep -Fq 'Invoke only the installed `agentic-os.pursue` capability' \
+  "$JOB_PURSUE_DIR/prompt.md" \
+  || fail 'Job Pursue does not route through agentic-os.pursue'
+grep -Fqi 'do not invoke `agentic-os.pursue` or any System capability' \
+  "$JOB_PURSUE_DIR/prompt.md" \
+  || fail 'Job Pursue validation can invoke a mutating capability'
+grep -Fqi 'required_approvals' "$JOB_PURSUE_DIR/prompt.md" \
+  || fail 'Job Pursue drops required human approvals'
+grep -Fqi 'evidence_sufficiency' "$JOB_PURSUE_DIR/prompt.md" \
+  || fail 'Job Pursue drops native evidence gates'
+grep -Fqi 'submit an application' "$JOB_PURSUE_DIR/prompt.md" \
+  || fail 'Job Pursue validation can submit an application'
+grep -Fqi 'contact a person' "$JOB_PURSUE_DIR/prompt.md" \
+  || fail 'Job Pursue validation can contact a person'
+grep -Fqi 'factual real-world event' "$JOB_PURSUE_DIR/prompt.md" \
+  || fail 'Job Pursue validation can assert a real-world event'
+grep -Fqi 'write to Knowledge' "$JOB_PURSUE_DIR/prompt.md" \
+  || fail 'Job Pursue validation can write to Knowledge'
+
+if grep -IREn \
+  'node main\.mjs|career\.opportunity\.|career\.profile\.|knowledge-system-interface|/lookup|/capture' \
+  "$JOB_PURSUE_DIR"; then
+  fail 'Job Pursue duplicates Career or Knowledge semantics'
 fi
 
 if find skills/public -mindepth 2 -maxdepth 2 -type f ! -name SKILL.md -print -quit \
