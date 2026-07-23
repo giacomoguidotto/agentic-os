@@ -25,6 +25,8 @@ releases independently.
   Refresh release module and its proposal-only validation contract.
 - `automations/internal/job-scout/`: the canonical scheduled Job Scout release
   module, invoking `agentic-os.scout` with non-publishing, no-write validation.
+- `automations/internal/job-pursue/`: the canonical scheduled Job Pursue release
+  module, invoking `agentic-os.pursue` while preserving action and evidence gates.
 - `scripts/check.sh`: public-safety, ownership, and source-shape validation.
 - `.github/workflows/`: clean-clone validation and independent tag releases.
 
