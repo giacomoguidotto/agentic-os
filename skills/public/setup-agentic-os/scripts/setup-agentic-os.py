@@ -56,6 +56,8 @@ def run(
             error.stdout or "",
             error.stderr or "command timed out",
         )
+    except OSError as error:
+        return subprocess.CompletedProcess(arguments, 126, "", str(error))
 
 
 def parse_scalar(raw_value: str, line_number: int) -> str:
@@ -271,20 +273,31 @@ def observe_repository(contract: dict[str, Any], root: Path) -> dict[str, Any]:
     origin = run(["git", "config", "--get", "remote.origin.url"], cwd=root)
     if origin.returncode != 0:
         return result(contract, root, "blocked", "origin-missing")
+    effective_origin = run(["git", "remote", "get-url", "origin"], cwd=root)
+    if effective_origin.returncode != 0:
+        return result(contract, root, "blocked", "origin-transport-unavailable")
     actual_identity = repository_identity(origin.stdout)
-    trusted_host = trusted_github_host(origin.stdout)
+    effective_identity = repository_identity(effective_origin.stdout)
+    trusted_host = trusted_github_host(origin.stdout) and trusted_github_host(
+        effective_origin.stdout
+    )
     checks.append(
         {
             "id": "repository-identity",
             "status": (
                 "converged"
                 if actual_identity == contract["repository"]
+                and effective_identity == contract["repository"]
                 and trusted_host
                 else "blocked"
             ),
         }
     )
-    if actual_identity != contract["repository"] or not trusted_host:
+    if (
+        actual_identity != contract["repository"]
+        or effective_identity != contract["repository"]
+        or not trusted_host
+    ):
         return result(
             contract,
             root,
@@ -361,8 +374,9 @@ def clone_missing(contract: dict[str, Any], root: Path) -> tuple[bool, str]:
     if root.exists():
         return False, "registered-root-became-present"
     clone_url = f"https://github.com/{contract['repository']}.git"
-    candidate = Path(tempfile.mkdtemp(prefix=f".{root.name}-clone-", dir=parent))
+    candidate: Path | None = None
     try:
+        candidate = Path(tempfile.mkdtemp(prefix=f".{root.name}-clone-", dir=parent))
         candidate.rmdir()
         cloned = run(
             [
@@ -381,10 +395,13 @@ def clone_missing(contract: dict[str, Any], root: Path) -> tuple[bool, str]:
         if root.exists():
             return False, "registered-root-became-present"
         candidate.rename(root)
+        candidate = None
         return True, "repository-cloned"
+    except OSError:
+        return False, "clone-filesystem-error"
     finally:
-        if candidate.exists():
-            shutil.rmtree(candidate)
+        if candidate is not None:
+            shutil.rmtree(candidate, ignore_errors=True)
 
 
 def combined_status(branches: list[dict[str, Any]]) -> str:

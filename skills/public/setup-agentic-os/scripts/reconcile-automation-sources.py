@@ -7,9 +7,11 @@ import argparse
 import hashlib
 import json
 import os
+import re
 import shutil
 import tempfile
 from pathlib import Path
+from pathlib import PurePosixPath
 from typing import Any
 
 
@@ -33,7 +35,23 @@ def load_migration() -> list[dict[str, Any]]:
     identities = [item.get("stable_identity") for item in automations]
     if len(set(names)) != len(names) or len(set(identities)) != len(identities):
         raise ValueError("automation migration names and identities must be unique")
+    for automation in automations:
+        validate_automation(automation)
     return automations
+
+
+def validate_automation(automation: dict[str, Any]) -> None:
+    name = automation.get("name")
+    source = automation.get("source")
+    if not isinstance(name, str) or not re.fullmatch(
+        r"[a-z0-9]+(?:-[a-z0-9]+)*", name
+    ):
+        raise ValueError(f"invalid automation name: {name}")
+    if source != f"automations/{name}":
+        raise ValueError(f"invalid automation source: {source}")
+    source_path = PurePosixPath(source)
+    if source_path.is_absolute() or ".." in source_path.parts:
+        raise ValueError(f"unsafe automation source: {source}")
 
 
 def source_files(source: Path) -> list[Path]:
@@ -65,6 +83,7 @@ def compare(automations: list[dict[str, Any]], target_root: Path) -> list[dict[s
     require_safe_directory(target_root, "target root")
     branches = []
     for automation in automations:
+        validate_automation(automation)
         source = RESOURCE_DIR / automation["source"]
         target = target_root / automation["name"]
         require_safe_directory(target, "automation source target")
@@ -95,6 +114,7 @@ def reconcile(automations: list[dict[str, Any]], target_root: Path) -> list[str]
     require_safe_directory(target_root, "target root")
     target_root.mkdir(parents=False, exist_ok=True)
     for automation in automations:
+        validate_automation(automation)
         source = RESOURCE_DIR / automation["source"]
         target = target_root / automation["name"]
         require_safe_directory(target, "automation source target")
