@@ -1,4 +1,4 @@
 interface:
   display_name: "Agentic OS"
-  short_description: "Coordinate fresh cross-System capabilities"
-  default_prompt: "Use $agentic-os scout --target 30 to find and evaluate fresh Career opportunities."
+  short_description: "Coordinate fresh Career capabilities"
+  default_prompt: "Use $agentic-os pursue to plan safe next Career work and review waits."
