@@ -20,6 +20,10 @@ jobs:
           fetch-depth: 0
       - name: Validate public source
         run: bash scripts/check.sh
+      - name: Configure release identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
       - name: Derive independent version
         id: version
         run: bash scripts/bump-version.sh
