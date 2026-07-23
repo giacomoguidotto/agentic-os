@@ -26,3 +26,12 @@ jobs:
       - name: Push tag
         if: steps.version.outputs.tag != ''
         run: git push origin "${{ steps.version.outputs.tag }}"
+      - name: Publish immutable GitHub release
+        if: steps.version.outputs.tag != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >-
+          gh release create "${{ steps.version.outputs.tag }}"
+          --verify-tag
+          --title "${{ steps.version.outputs.tag }}"
+          --generate-notes

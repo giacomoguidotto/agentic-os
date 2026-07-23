@@ -594,5 +594,9 @@ grep -Fq 'bash scripts/check.sh' .github/workflows/check.yml \
   || fail 'clean-clone validation workflow does not run the source validator'
 grep -Fq 'scripts/bump-version.sh' .github/workflows/release.yml \
   || fail 'release workflow does not use the independent version script'
+grep -Fq 'gh release create' .github/workflows/release.yml \
+  || fail 'release workflow does not publish a stable GitHub release'
+grep -Fq -- '--verify-tag' .github/workflows/release.yml \
+  || fail 'release workflow can publish without a verified source tag'
 
 printf 'check: ok\n'
