@@ -20,6 +20,9 @@ def require(condition, message):
 
 schema = load("resources/upskill-result.schema.json")
 example = load("resources/examples/upskill-result.json")
+blocked_readiness_example = load(
+    "resources/examples/upskill-blocked-readiness-result.json"
+)
 
 require(
     schema["$id"] == "agentic-os.upskill.result/v1",
@@ -44,6 +47,45 @@ require(
     "required result fields do not match declared properties",
 )
 
+snapshot_systems = {"career", "knowledge", "mastery"}
+snapshot_contract = properties["snapshots"]
+require(
+    set(snapshot_contract["properties"]) == snapshot_systems,
+    "snapshot properties must contain exactly three Systems",
+)
+require(
+    "required" not in snapshot_contract,
+    "snapshots acquired before an early block must not be required",
+)
+require(
+    set(properties["snapshot_acquisition"]["enum"])
+    == {"not_started", "partial", "completed"},
+    "snapshot acquisition states are invalid",
+)
+snapshot_rules = {
+    rule["if"]["properties"]["snapshot_acquisition"]["const"]: rule["then"][
+        "properties"
+    ]["snapshots"]
+    for rule in schema["allOf"]
+}
+require(
+    set(snapshot_rules) == {"not_started", "partial", "completed"},
+    "snapshot acquisition rules are incomplete",
+)
+require(
+    snapshot_rules["not_started"]["maxProperties"] == 0,
+    "not-started acquisition permits fabricated snapshots",
+)
+require(
+    snapshot_rules["partial"]["minProperties"] == 1
+    and snapshot_rules["partial"]["maxProperties"] == 2,
+    "partial acquisition does not require one or two snapshots",
+)
+require(
+    set(snapshot_rules["completed"]["required"]) == snapshot_systems,
+    "completed acquisition must contain all three snapshots",
+)
+
 require(set(example) == set(schema["required"]), "example result fields are invalid")
 require(
     example["schema"] == properties["schema"]["const"],
@@ -58,11 +100,15 @@ require(
     "example terminal status is invalid",
 )
 require(
-    set(example["readiness"]) == {"career", "knowledge", "mastery"},
+    example["snapshot_acquisition"] == "completed",
+    "complete example snapshot acquisition state is invalid",
+)
+require(
+    set(example["readiness"]) == snapshot_systems,
     "example readiness must contain exactly three Systems",
 )
 require(
-    set(example["snapshots"]) == {"career", "knowledge", "mastery"},
+    set(example["snapshots"]) == snapshot_systems,
     "example snapshots must contain exactly three Systems",
 )
 require(
@@ -140,6 +186,45 @@ if example["status"] == "completed" and example["writes"] == 0:
         "completed no-op example contains a changed mapping",
     )
 
+require(
+    set(blocked_readiness_example) == set(schema["required"]),
+    "early-blocked example result fields are invalid",
+)
+require(
+    blocked_readiness_example["schema"] == properties["schema"]["const"],
+    "early-blocked example result schema is invalid",
+)
+require(
+    blocked_readiness_example["capability"] == properties["capability"]["const"],
+    "early-blocked example capability is invalid",
+)
+require(
+    blocked_readiness_example["status"] == "blocked",
+    "early-readiness failure must return blocked",
+)
+require(
+    blocked_readiness_example["snapshot_acquisition"] == "not_started",
+    "early-blocked snapshot acquisition state is invalid",
+)
+require(
+    set(blocked_readiness_example["readiness"]) == snapshot_systems,
+    "early-blocked readiness must contain exactly three Systems",
+)
+require(
+    blocked_readiness_example["snapshots"] == {},
+    "early-blocked example fabricates snapshot evidence",
+)
+require(
+    blocked_readiness_example["ranking"] == []
+    and blocked_readiness_example["mappings"] == []
+    and blocked_readiness_example["writes"] == 0,
+    "early-blocked example claims reconciliation work",
+)
+require(
+    blocked_readiness_example["blocked_actions"],
+    "early-blocked example lacks a capability-scoped blocker",
+)
+
 skill = (MODULE / "SKILL.md").read_text(encoding="utf-8")
 for required_text in (
     "/agentic-os upskill <knowledge-project-ref>...",
@@ -152,6 +237,8 @@ for required_text in (
     "stable topological sort",
     "Verify the full returned graph",
     "report `writes` as zero",
+    "`snapshot_acquisition`",
+    "never fabricate",
     "never requests capture",
     "agentic-os.upskill.result/v1",
 ):

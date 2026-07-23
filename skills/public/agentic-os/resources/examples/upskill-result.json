@@ -25,6 +25,7 @@
       "reasons": []
     }
   },
+  "snapshot_acquisition": "completed",
   "snapshots": {
     "career": {
       "schema": "career.requisite.snapshot/v1",

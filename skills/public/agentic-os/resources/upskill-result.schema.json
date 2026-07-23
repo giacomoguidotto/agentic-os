@@ -9,6 +9,7 @@
     "capability",
     "status",
     "readiness",
+    "snapshot_acquisition",
     "snapshots",
     "ranking",
     "mappings",
@@ -30,10 +31,12 @@
         "mastery": { "$ref": "#/$defs/readiness" }
       }
     },
+    "snapshot_acquisition": {
+      "enum": ["not_started", "partial", "completed"]
+    },
     "snapshots": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["career", "knowledge", "mastery"],
       "properties": {
         "career": {
           "allOf": [
@@ -90,6 +93,54 @@
       "items": { "$ref": "#/$defs/summary" }
     }
   },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "snapshot_acquisition": { "const": "not_started" }
+        },
+        "required": ["snapshot_acquisition"]
+      },
+      "then": {
+        "properties": {
+          "snapshots": {
+            "maxProperties": 0
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "snapshot_acquisition": { "const": "partial" }
+        },
+        "required": ["snapshot_acquisition"]
+      },
+      "then": {
+        "properties": {
+          "snapshots": {
+            "minProperties": 1,
+            "maxProperties": 2
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "snapshot_acquisition": { "const": "completed" }
+        },
+        "required": ["snapshot_acquisition"]
+      },
+      "then": {
+        "properties": {
+          "snapshots": {
+            "required": ["career", "knowledge", "mastery"]
+          }
+        }
+      }
+    }
+  ],
   "$defs": {
     "readiness": {
       "type": "object",

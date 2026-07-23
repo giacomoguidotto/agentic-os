@@ -364,7 +364,12 @@ next step, and establish `mastery.cycles.reconcile` availability only through it
 canonical versioned result when reconciliation is needed. A missing root, unsafe
 repository state, malformed result, or unavailable capability returns a blocker
 scoped to `agentic-os.upskill`. Do not guess a fallback, import provider structure,
-or invoke an internal System script.
+or invoke an internal System script. When readiness blocks before snapshot
+acquisition completes, report summaries only for snapshots actually acquired.
+An empty `snapshots` object is valid when none were acquired; never fabricate
+snapshot evidence to fill an unobserved System slot. Report
+`snapshot_acquisition` as `not_started`, `partial`, or `completed` to match zero,
+one or two, or all three acquired summaries.
 
 ### 2. Acquire exactly three fresh snapshots
 
@@ -461,10 +466,14 @@ is natively preserved, every nonterminal prerequisite edge is present, no
 unexpected managed edge was introduced, and every native claimed write is
 observable. A post-check mismatch is `failed`.
 
-Return `agentic-os.upskill.result/v1` with exactly three System snapshot summaries,
-the deterministic rank, the native terminal result for every mapping, write
-count, full-graph verification, and capability-scoped blockers. Reference native
-cycles instead of copying their contents and never return revision tokens.
+Return `agentic-os.upskill.result/v1` with a summary for every System snapshot
+actually acquired, the deterministic rank, the native terminal result for every
+mapping, write count, full-graph verification, and capability-scoped blockers.
+After acquisition completes this is exactly three snapshot summaries. A result
+that stops earlier contains only the acquired subset, including none when
+readiness blocked before acquisition. Set `snapshot_acquisition` from the actual
+summary count independently of terminal status. Reference native cycles instead
+of copying their contents and never return revision tokens.
 
 Use terminal statuses exactly:
 

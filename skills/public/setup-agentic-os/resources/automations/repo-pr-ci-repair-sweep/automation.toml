@@ -13,3 +13,19 @@ execution_environment = "local"
 destination = "local"
 
 prompt_file = "prompt.md"
+
+[authority_boundary]
+coordinator = "authenticated-policy-only"
+worker = "credentialless-network-disabled-sandbox"
+github_credentials = "absent"
+repository_network = "disabled"
+on_unavailable = "blocked"
+untrusted_content = [
+  "pull-request-head",
+  "pull-request-body",
+  "comments",
+  "repository-instructions",
+  "workflow-definitions",
+  "workflow-logs",
+  "check-output",
+]
