@@ -679,5 +679,21 @@ grep -Fq -- '--verify-tag' .github/workflows/release.yml \
   || fail 'release workflow can publish without a verified source tag'
 grep -Fq 'gh release view' .github/workflows/release.yml \
   || fail 'release workflow cannot resume after a partial publication'
+grep -Fq '.immutable == true' .github/workflows/release.yml \
+  || fail 'release workflow can notify before an immutable release exists'
+grep -Fq 'Verify Trigger App configuration' .github/workflows/release.yml \
+  || fail 'release workflow does not fail clearly on missing Trigger configuration'
+grep -Fq 'permission-actions: write' .github/workflows/release.yml \
+  || fail 'release workflow does not request target-scoped Actions write'
+grep -Fq 'repos/giacomoguidotto/skills/actions/workflows/reconcile.yml/dispatches' \
+  .github/workflows/release.yml \
+  || fail 'release workflow does not wake Distribution Bundle reconciliation'
+for input in source_repository source_release_id source_tag; do
+  grep -Fq "inputs[$input]" .github/workflows/release.yml \
+    || fail "release workflow omits the $input audit hint"
+done
+if grep -Fq 'permission-contents: write' .github/workflows/release.yml; then
+  fail 'source Trigger token can write Distribution Bundle contents'
+fi
 
 printf 'check: ok\n'
