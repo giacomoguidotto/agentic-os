@@ -82,10 +82,11 @@ required_files=(
   skills/public/setup-agentic-os/SKILL.md
   skills/public/setup-agentic-os/agents/openai.yaml
   skills/public/setup-agentic-os/resources/system-contracts.json
-  skills/public/setup-agentic-os/resources/automation-migration.json
   skills/public/setup-agentic-os/scripts/setup-agentic-os.py
   skills/public/setup-agentic-os/scripts/reconcile-automation-sources.py
+  automations/manifest.json
   scripts/bump-version.sh
+  scripts/package-setup-agentic-os.py
   scripts/check-agentic-os-scout.py
   scripts/check-agentic-os-pursue.py
   scripts/check-agentic-os-upskill.py
@@ -100,18 +101,18 @@ required_files=(
   skills/internal/setup-project/SKILL.md
   skills/internal/setup-project/agents/openai.yaml
   skills/internal/setup-project/resources/repository-setup.md
-  skills/public/setup-agentic-os/resources/automations/repo-pr-ci-repair-sweep/automation.toml
-  skills/public/setup-agentic-os/resources/automations/repo-pr-ci-repair-sweep/prompt.md
-  skills/public/setup-agentic-os/resources/automations/social-compose/automation.toml
-  skills/public/setup-agentic-os/resources/automations/social-compose/knowledge-request.json
-  skills/public/setup-agentic-os/resources/automations/social-compose/prompt.md
-  skills/public/setup-agentic-os/resources/automations/portfolio-refresh/automation.toml
-  skills/public/setup-agentic-os/resources/automations/portfolio-refresh/knowledge-request.json
-  skills/public/setup-agentic-os/resources/automations/portfolio-refresh/prompt.md
-  skills/public/setup-agentic-os/resources/automations/job-scout/automation.toml
-  skills/public/setup-agentic-os/resources/automations/job-scout/prompt.md
-  skills/public/setup-agentic-os/resources/automations/job-pursue/automation.toml
-  skills/public/setup-agentic-os/resources/automations/job-pursue/prompt.md
+  automations/repo-pr-ci-repair-sweep/automation.toml
+  automations/repo-pr-ci-repair-sweep/prompt.md
+  automations/social-compose/automation.toml
+  automations/social-compose/knowledge-request.json
+  automations/social-compose/prompt.md
+  automations/portfolio-refresh/automation.toml
+  automations/portfolio-refresh/knowledge-request.json
+  automations/portfolio-refresh/prompt.md
+  automations/job-scout/automation.toml
+  automations/job-scout/prompt.md
+  automations/job-pursue/automation.toml
+  automations/job-pursue/prompt.md
 )
 
 for path in "${required_files[@]}"; do
@@ -121,6 +122,7 @@ done
 python3 scripts/check-agentic-os-scout.py
 python3 scripts/check-agentic-os-pursue.py
 python3 scripts/check-agentic-os-upskill.py
+python3 scripts/package-setup-agentic-os.py check
 python3 scripts/check-setup-agentic-os.py
 python3 scripts/check-migration-rehearsal.py
 node --test skills/public/orchestrate/scripts/*.test.mjs
@@ -234,8 +236,8 @@ declare -A automation_paths=()
 while IFS= read -r -d '' automation_file; do
   automation_file=${automation_file#./}
   case "$automation_file" in
-    skills/public/setup-agentic-os/resources/automations/*/automation.toml) ;;
-    *) fail "automation definition is outside the setup resource lane: $automation_file" ;;
+    automations/*/automation.toml) ;;
+    *) fail "automation definition is outside the canonical automation lane: $automation_file" ;;
   esac
 
   automation_id=$(sed -n 's/^id[[:space:]]*=[[:space:]]*"\([^"]*\)".*/\1/p' \
@@ -247,10 +249,10 @@ while IFS= read -r -d '' automation_file; do
 done < <(find . -path ./.git -prune -o -type f -name automation.toml -print0)
 
 [[ "${automation_paths[renovate-pr-ci-fixer]:-}" == \
-  skills/public/setup-agentic-os/resources/automations/repo-pr-ci-repair-sweep/automation.toml ]] \
-  || fail 'PR/CI repair sweep must be defined once in the setup resource lane'
+  automations/repo-pr-ci-repair-sweep/automation.toml ]] \
+  || fail 'PR/CI repair sweep must be defined once in the canonical automation lane'
 
-PR_SWEEP_DIR=skills/public/setup-agentic-os/resources/automations/repo-pr-ci-repair-sweep
+PR_SWEEP_DIR=automations/repo-pr-ci-repair-sweep
 python3 - "$PR_SWEEP_DIR/automation.toml" <<'PY'
 import sys
 import tomllib
@@ -298,15 +300,21 @@ grep -Fq 'Transfer names, annotations, logs, and output to the untrusted' \
 grep -Fq 'Run `git diff --check` after edits and immediately' \
   "$PR_SWEEP_DIR/prompt.md" \
   || fail 'PR/CI repair sweep can commit an invalid patch'
+grep -Fq 'Never invent or use a generic CI, bot, Codex, or unrelated noreply identity.' \
+  "$PR_SWEEP_DIR/prompt.md" \
+  || fail 'PR/CI repair sweep permits a synthetic commit identity'
+grep -Fq 'the authenticated user'\''s verified GitHub identity' \
+  "$PR_SWEEP_DIR/prompt.md" \
+  || fail 'PR/CI repair sweep does not require the authenticated commit identity'
 grep -Fq 'If this boundary cannot be established, classify the PR as blocked.' \
   "$PR_SWEEP_DIR/prompt.md" \
   || fail 'PR/CI repair sweep does not fail closed without isolation'
 
 [[ "${automation_paths[social-draft-pulse]:-}" == \
-  skills/public/setup-agentic-os/resources/automations/social-compose/automation.toml ]] \
-  || fail 'Social Compose must be defined once in the setup resource lane'
+  automations/social-compose/automation.toml ]] \
+  || fail 'Social Compose must be defined once in the canonical automation lane'
 
-SOCIAL_DIR=skills/public/setup-agentic-os/resources/automations/social-compose
+SOCIAL_DIR=automations/social-compose
 python3 - "$SOCIAL_DIR/automation.toml" "$SOCIAL_DIR/knowledge-request.json" <<'PY'
 import json
 import sys
@@ -414,10 +422,10 @@ grep -Fqi 'do not call any sink capability' "$SOCIAL_DIR/prompt.md" \
   || fail 'Social Compose non-publishing validation can mutate its sink'
 
 [[ "${automation_paths[portfolio-surface-sweep]:-}" == \
-  skills/public/setup-agentic-os/resources/automations/portfolio-refresh/automation.toml ]] \
-  || fail 'Portfolio Refresh must be defined once in the setup resource lane'
+  automations/portfolio-refresh/automation.toml ]] \
+  || fail 'Portfolio Refresh must be defined once in the canonical automation lane'
 
-PORTFOLIO_DIR=skills/public/setup-agentic-os/resources/automations/portfolio-refresh
+PORTFOLIO_DIR=automations/portfolio-refresh
 python3 - "$PORTFOLIO_DIR/automation.toml" \
   "$PORTFOLIO_DIR/knowledge-request.json" <<'PY'
 import json
@@ -529,10 +537,10 @@ grep -Fqi 'mutate Knowledge' "$PORTFOLIO_DIR/prompt.md" \
   || fail 'Portfolio Refresh can mutate Knowledge'
 
 [[ "${automation_paths[career-ops-scan-and-evaluate]:-}" == \
-  skills/public/setup-agentic-os/resources/automations/job-scout/automation.toml ]] \
-  || fail 'Job Scout must be defined once in the setup resource lane'
+  automations/job-scout/automation.toml ]] \
+  || fail 'Job Scout must be defined once in the canonical automation lane'
 
-JOB_SCOUT_DIR=skills/public/setup-agentic-os/resources/automations/job-scout
+JOB_SCOUT_DIR=automations/job-scout
 python3 - "$JOB_SCOUT_DIR/automation.toml" <<'PY'
 import sys
 import tomllib
@@ -594,10 +602,10 @@ if grep -IREn \
 fi
 
 [[ "${automation_paths[job-hunt-advancement-pulse]:-}" == \
-  skills/public/setup-agentic-os/resources/automations/job-pursue/automation.toml ]] \
-  || fail 'Job Pursue must be defined once in the setup resource lane'
+  automations/job-pursue/automation.toml ]] \
+  || fail 'Job Pursue must be defined once in the canonical automation lane'
 
-JOB_PURSUE_DIR=skills/public/setup-agentic-os/resources/automations/job-pursue
+JOB_PURSUE_DIR=automations/job-pursue
 python3 - "$JOB_PURSUE_DIR/automation.toml" <<'PY'
 import sys
 import tomllib
@@ -673,6 +681,23 @@ grep -Fq 'bash scripts/check.sh' .github/workflows/check.yml \
   || fail 'clean-clone validation workflow does not run the source validator'
 grep -Fq 'scripts/bump-version.sh' .github/workflows/release.yml \
   || fail 'release workflow does not use the independent version script'
+grep -Fq 'scripts/package-setup-agentic-os.py materialize' \
+  .github/workflows/release.yml \
+  || fail 'release workflow does not package canonical automation sources'
+grep -Fq 'scripts/package-setup-agentic-os.py verify' \
+  .github/workflows/release.yml \
+  || fail 'release workflow does not verify the packaged automation projection'
+python3 - .github/workflows/release.yml <<'PY'
+import sys
+
+workflow = open(sys.argv[1], encoding="utf-8").read()
+materialize = workflow.index("scripts/package-setup-agentic-os.py materialize")
+version = workflow.index("scripts/bump-version.sh")
+if materialize > version:
+    raise SystemExit(
+        "check: release tag can be created before automation resources are packaged"
+    )
+PY
 grep -Fq 'gh release create' .github/workflows/release.yml \
   || fail 'release workflow does not publish a stable GitHub release'
 grep -Fq -- '--verify-tag' .github/workflows/release.yml \

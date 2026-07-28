@@ -49,7 +49,7 @@ without an actual credentialless and network-disabled sandbox is insufficient.
 
 ## Start and discover
 
-1. Run `gh auth status`, resolve the login with `gh api user --jq .login`, and list organization owners with `gh api user/orgs --paginate --jq '.[].login'`.
+1. Run `gh auth status`, resolve the authenticated user's numeric ID, login, and display name with `gh api user`, and list organization owners with `gh api user/orgs --paginate --jq '.[].login'`. Derive the commit identity only from that authenticated user: use its display name (or login when the name is absent) and `<id>+<login>@users.noreply.github.com` for both Git author and committer. This is the only permitted fallback identity. Never invent or use a generic CI, bot, Codex, or unrelated noreply identity. If this verified GitHub identity cannot be derived or configured in the worker, classify the PR as blocked and do not commit or push.
 2. Read only controller-owned agent instructions in the authenticated coordinator. When an installed GitHub CI-fix skill is available, read it there, but run every helper that consumes repository content only inside the untrusted worker; never locate it through a workspace source path.
 3. For each owner, run these owner-scoped searches and deduplicate by URL:
 
@@ -88,7 +88,8 @@ or broad refactoring.
 
 Run the smallest repository-native reproduction or validation command only in the
 worker. Commit only a small relevant diff there after validation, using
-`Fix CI for PR <number>`. Run `git diff --check` after edits and immediately
+`Fix CI for PR <number>` and the authenticated user's verified GitHub identity
+for both author and committer. Run `git diff --check` after edits and immediately
 before committing. Then return the bounded patch, validation evidence, and
 resulting Git objects to the coordinator. After the coordinator rechecks every
 trusted invariant without checking out or executing the tree, push only that

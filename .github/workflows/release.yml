@@ -24,6 +24,18 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+      - name: Materialize self-contained release modules
+        run: |
+          python3 scripts/package-setup-agentic-os.py materialize
+          git add \
+            skills/public/setup-agentic-os/resources/AUTOMATIONS.generated.md \
+            skills/public/setup-agentic-os/resources/automation-migration.json \
+            skills/public/setup-agentic-os/resources/automations
+          if ! git diff --cached --quiet; then
+            git commit -m "chore: package setup automation resources"
+          fi
+          python3 scripts/package-setup-agentic-os.py verify
+          git diff --check
       - name: Derive independent version
         id: version
         run: bash scripts/bump-version.sh

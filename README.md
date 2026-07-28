@@ -17,14 +17,15 @@ releases independently.
   provider-neutral `/post` and `/tweet` authoring surfaces, plus
   `/orchestrate` for accepted GitHub ticket graphs.
 - `skills/public/setup-agentic-os/`: the roots-only, stateless constellation
-  setup composer, its fixed System contracts, canonical automation resources,
-  and migration tooling.
+  setup composer, its fixed System contracts, and automation materialization
+  tooling.
+- `automations/`: the one canonical source module for Agentic OS-owned
+  automation definitions and their stable-identity manifest.
 - `docs/adr/`: architectural decisions owned by Agentic OS.
 - `skills/public/`: the positive public export surface.
 - `skills/internal/`: committed internal skills, excluded from public export.
-- `skills/public/setup-agentic-os/resources/automations/`: the one canonical
-  source for Agentic OS-owned automation definitions, carried by setup without
-  installation-local state.
+- `scripts/package-setup-agentic-os.py`: the release-only projection that
+  packages canonical automation sources into the distributed setup skill.
 - `scripts/check.sh`: public-safety, ownership, and source-shape validation.
 - `.github/workflows/`: clean-clone validation and independent tag releases.
 
@@ -43,3 +44,9 @@ release a major version. Non-release commit types produce no tag.
 
 Release versions provide source provenance only. They are not a synchronized
 version of the Agentic Constellation.
+
+The source branch never commits packaged automation copies. For a releasing
+commit, CI creates a packaging commit with deterministic contents, projects
+`automations/` into the setup skill, and tags that self-contained release
+commit. Generated copies are therefore present in distributed skills, but there
+is only one hand-edited source module.

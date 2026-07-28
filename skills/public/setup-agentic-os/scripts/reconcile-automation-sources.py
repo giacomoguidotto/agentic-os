@@ -16,8 +16,38 @@ from typing import Any
 
 
 SCRIPT_DIR = Path(__file__).resolve().parent
-RESOURCE_DIR = SCRIPT_DIR.parent / "resources"
-MIGRATION_PATH = RESOURCE_DIR / "automation-migration.json"
+SKILL_ROOT = SCRIPT_DIR.parent
+PACKAGED_RESOURCE_DIR = SKILL_ROOT / "resources"
+REPOSITORY_ROOT = SKILL_ROOT.parents[2]
+CANONICAL_AUTOMATION_ROOT = REPOSITORY_ROOT / "automations"
+
+
+def source_context() -> tuple[Path, Path]:
+    packaged_manifest = PACKAGED_RESOURCE_DIR / "automation-migration.json"
+    packaged_automations = PACKAGED_RESOURCE_DIR / "automations"
+    has_packaged_automations = packaged_automations.is_symlink() or (
+        packaged_automations.is_dir()
+        and any(
+            item.is_file() or item.is_symlink()
+            for item in packaged_automations.rglob("*")
+        )
+    )
+    if packaged_manifest.exists() or has_packaged_automations:
+        if not packaged_manifest.is_file() or not packaged_automations.is_dir():
+            raise ValueError("packaged automation resources are incomplete")
+        return PACKAGED_RESOURCE_DIR, packaged_manifest
+
+    canonical_manifest = CANONICAL_AUTOMATION_ROOT / "manifest.json"
+    source_skill_root = (
+        REPOSITORY_ROOT / "skills" / "public" / "setup-agentic-os"
+    )
+    if (
+        canonical_manifest.is_file()
+        and (REPOSITORY_ROOT / "CONTEXT.md").is_file()
+        and source_skill_root.resolve() == SKILL_ROOT.resolve()
+    ):
+        return REPOSITORY_ROOT, canonical_manifest
+    raise ValueError("canonical automation sources are unavailable")
 
 
 def digest(path: Path) -> str:
@@ -25,7 +55,8 @@ def digest(path: Path) -> str:
 
 
 def load_migration() -> list[dict[str, Any]]:
-    document = json.loads(MIGRATION_PATH.read_text(encoding="utf-8"))
+    _source_root, manifest_path = source_context()
+    document = json.loads(manifest_path.read_text(encoding="utf-8"))
     if document.get("schema") != "agentic-os.automation-migration/v1":
         raise ValueError("unsupported automation migration schema")
     automations = document.get("automations")
@@ -80,11 +111,12 @@ def require_safe_managed_parent(target_root: Path, path: Path) -> None:
 
 
 def compare(automations: list[dict[str, Any]], target_root: Path) -> list[dict[str, Any]]:
+    source_root, _manifest_path = source_context()
     require_safe_directory(target_root, "target root")
     branches = []
     for automation in automations:
         validate_automation(automation)
-        source = RESOURCE_DIR / automation["source"]
+        source = source_root / automation["source"]
         target = target_root / automation["name"]
         require_safe_directory(target, "automation source target")
         drift = []
@@ -110,12 +142,13 @@ def compare(automations: list[dict[str, Any]], target_root: Path) -> list[dict[s
 
 
 def reconcile(automations: list[dict[str, Any]], target_root: Path) -> list[str]:
+    source_root, _manifest_path = source_context()
     writes: list[str] = []
     require_safe_directory(target_root, "target root")
     target_root.mkdir(parents=False, exist_ok=True)
     for automation in automations:
         validate_automation(automation)
-        source = RESOURCE_DIR / automation["source"]
+        source = source_root / automation["source"]
         target = target_root / automation["name"]
         require_safe_directory(target, "automation source target")
         target.mkdir(exist_ok=True)

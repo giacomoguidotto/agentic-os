@@ -21,6 +21,7 @@ FIXTURES = REPOSITORY_ROOT / "scripts" / "fixtures"
 RELEASE_MANIFEST = FIXTURES / "migration-releases.json"
 SYSTEM_COMMAND = FIXTURES / "migration-system-command.py"
 BUNDLE_COMMAND = FIXTURES / "migration-bundle-command.py"
+PACKAGE_COMMAND = REPOSITORY_ROOT / "scripts" / "package-setup-agentic-os.py"
 SETUP_COMMAND = (
     REPOSITORY_ROOT
     / "skills"
@@ -29,7 +30,6 @@ SETUP_COMMAND = (
     / "scripts"
     / "setup-agentic-os.py"
 )
-AUTOMATION_COMMAND = SETUP_COMMAND.with_name("reconcile-automation-sources.py")
 SYSTEM_KEYS = ("knowledge-system", "mastery-system", "career-ops")
 SYSTEM_ORDER = ("career", "mastery", "knowledge")
 SYSTEM_KEY = {
@@ -151,7 +151,27 @@ def create_release_fixtures(releases: Path) -> None:
     for repository, names in exports.items():
         root = fixture_release_root(releases, repository)
         for name in names:
-            skill(root / "skills" / "public" / name, name)
+            target = root / "skills" / "public" / name
+            if (
+                repository == "giacomoguidotto/agentic-os"
+                and name == "setup-agentic-os"
+            ):
+                shutil.copytree(
+                    REPOSITORY_ROOT
+                    / "skills"
+                    / "public"
+                    / "setup-agentic-os",
+                    target,
+                )
+                run(
+                    "python3",
+                    str(PACKAGE_COMMAND),
+                    "materialize",
+                    "--skill-root",
+                    str(target),
+                )
+            else:
+                skill(target, name)
     skill(
         fixture_release_root(releases, "giacomoguidotto/agentic-os")
         / "skills"
@@ -321,15 +341,8 @@ def gateway(system: str, capability: str, root: Path, payload: dict[str, Any]) -
 
 
 def read_automation_map() -> list[dict[str, Any]]:
-    path = (
-        REPOSITORY_ROOT
-        / "skills"
-        / "public"
-        / "setup-agentic-os"
-        / "resources"
-        / "automation-migration.json"
-    )
-    return json.loads(path.read_text(encoding="utf-8"))["automations"]
+    manifest_path = REPOSITORY_ROOT / "automations" / "manifest.json"
+    return json.loads(manifest_path.read_text(encoding="utf-8"))["automations"]
 
 
 def initialize_harness(harness: Path) -> None:
@@ -418,9 +431,16 @@ def install_bundle(harness: Path, bundle: Path, releases: Path) -> None:
 
 def reconcile_automations(harness: Path) -> dict[str, Any]:
     lane = harness / "automation-sources"
+    installed_command = (
+        harness
+        / "skills"
+        / "setup-agentic-os"
+        / "scripts"
+        / "reconcile-automation-sources.py"
+    )
     result = json_run(
         "python3",
-        str(AUTOMATION_COMMAND),
+        str(installed_command),
         "reconcile",
         "--target-root",
         str(lane),

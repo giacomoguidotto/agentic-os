@@ -24,4 +24,7 @@ bindings outside the repository.
 - Every System remains independently usable and releasable.
 - Setup derives current state from live System contracts and materializations.
 - Agentic OS releases describe only Agentic OS source provenance.
-- Coordination definitions can later ship as self-contained release modules.
+- Coordination definitions remain canonical in their Agentic OS-owned source
+  modules.
+- Release packaging may project those definitions into a self-contained skill,
+  but generated projections are never a second hand-edited source.

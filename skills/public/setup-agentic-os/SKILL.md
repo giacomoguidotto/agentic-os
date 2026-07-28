@@ -96,10 +96,12 @@ System as a dependency.
 
 ## Agentic OS resources
 
-The canonical automation sources and migration map are bundled under
-`resources/automations/` and
-[`resources/automation-migration.json`](resources/automation-migration.json).
-They contain Agentic OS-owned coordination behavior only.
+In the Agentic OS source repository, canonical automation definitions live only
+under the top-level `automations/` module. Release packaging projects that module
+into `resources/automations/` with
+`resources/automation-migration.json`, so an installed copy of this skill remains
+self-contained. Never edit the packaged resource copy. Both forms contain
+Agentic OS-owned coordination behavior only.
 
 On `check`, compare each live automation through the harness by stable identity.
 Compare canonical definition files and execution metadata separately from
@@ -116,11 +118,12 @@ Do not recreate an existing automation merely because in-place update is
 unavailable.
 
 Use `scripts/reconcile-automation-sources.py` only for a harness adapter's isolated
-canonical-source lane. The destination must not contain installation-local or
-runtime metadata. The tool copies only declared source files, preserves unrelated
-files, writes atomically, and makes an identical second reconcile a zero-write
-no-op. It is not a substitute for the harness operation that preserves live
-identity and history.
+canonical-source lane. In an installed skill it reads the packaged projection; in
+the source repository it reads the top-level canonical module. The destination
+must not contain installation-local or runtime metadata. The tool copies only
+declared source files, preserves unrelated files, writes atomically, and makes an
+identical second reconcile a zero-write no-op. It is not a substitute for the
+harness operation that preserves live identity and history.
 
 Dependencies are scoped:
 
